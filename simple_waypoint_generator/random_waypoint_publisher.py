@@ -12,7 +12,6 @@ import time
 # 7.092166900634766, 2.7193148136138916, 0.7565169930458069
 FINAL_X = 12
 FINAL_Y = 78
-FINAL_Z = 0.005
 
 class PoseListener:
     def __init__(self):
@@ -33,98 +32,112 @@ class PoseListener:
     def spin(self):
         rospy.spin()  # Keeps the node running until terminated
 
-# A function that generates a best path from initial X, initial Y, initial Z to 
-# final X, final Y, final Z using RRT*.
-# Returns a dictionary of ordered X, Y, and Z points. The points are the nodes on
+# A function that generates a best path from initial X, initial Y to 
+# final X, final Y using RRT*.
+# Returns a list of ordered X, Y points. The points are the nodes on
 # the best path
-def best_path(initial_x, initial_y, initial_z):
-    # Initialize variables
-    nodes = {(initial_x, initial_y, initial_z): {'parent': None, 'cost': 0}}  # Start with the initial point
-    max_iter = 1000  # Maximum number of iterations
-    goal_radius = 1.0  # Distance threshold to the final point
-    
-    # Helper functions for managing nodes
+def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
+    # Initialize nodes with the initial position
+    nodes = {(initial_x, initial_y): {'parent': None, 'cost': 0}}
+    max_iter = 10000  # Maximum number of iterations
+    goal_radius = 1.0  # Radius for goal proximity
+    min_step_size = 2.0  # Minimum step size for each iteration
+    step_size = 4.0  # Step size for each iteration
+    search_radius = 4.0  # Search radius for nearby nodes
+
+    # Function to get the cost of a node
     def cost(node):
         return nodes[node]['cost'] if node in nodes else float('inf')
-    
+
+    # Function to set the parent of a node
     def set_parent(node, parent):
-        if node in nodes:
-            nodes[node]['parent'] = parent
-    
+        nodes[node]['parent'] = parent
+
+    # Function to set the cost of a node
     def set_cost(node, cost_value):
-        if node in nodes:
-            nodes[node]['cost'] = cost_value
-    
+        nodes[node]['cost'] = cost_value
+
+    # Function to get the parent of a node
     def get_parent(node):
         return nodes[node]['parent'] if node in nodes else None
-    
+
+    # Function to calculate the distance between two nodes
+    def distance(node1, node2):
+        return math.sqrt((node1[0] - node2[0])**2 + (node1[1] - node2[1])**2)
+
+    # Function to reconstruct the path from the goal to the start
     def reconstruct_path(goal):
-        # Reconstruct the path from nodes to goal using parent pointers
         path = []
         current_node = goal
-        
         while current_node:
-            path.append({'x': current_node[0], 'y': current_node[1], 'z': current_node[2]})
+            path.append((current_node[0], current_node[1]))
             current_node = get_parent(current_node)
-        
-        path.reverse()  # Reverse path to start from initial point
+        path.reverse()
         return path
-    
-    # RRT* algorithm
+
+    def sample_free():
+        # Use boundary box to sample points
+        # Boundary_coordinates is a list of 4 pairs of coordinates
+        min_x = min(coordinate[0] for coordinate in boundary_coordinates)
+        max_x = max(coordinate[0] for coordinate in boundary_coordinates)
+        min_y = min(coordinate[1] for coordinate in boundary_coordinates)
+        max_y = max(coordinate[1] for coordinate in boundary_coordinates)
+        
+        return (random.uniform(min_x, max_x), random.uniform(min_y, max_y))
+
+    # Function to find the nearest node to a given node
+    def nearest(node):
+        return min(nodes, key=lambda n: distance(n, node))
+
+    # Function to steer from one node to another
+    def steer(from_node, to_node):
+        if distance(from_node, to_node) >  min_step_size and distance(from_node, to_node) < step_size:
+            return to_node
+        theta = math.atan2(to_node[1] - from_node[1], to_node[0] - from_node[0])
+        if distance(from_node, to_node) >  min_step_size:
+            return (from_node[0] + min_step_size * math.cos(theta), from_node[1] + min_step_size * math.sin(theta))
+        else:
+            return (from_node[0] + step_size * math.cos(theta), from_node[1] + step_size * math.sin(theta))
+
+    # Function to find nodes near a new node
+    def near_nodes(new_node):
+        return [node for node in nodes if distance(node, new_node) <= search_radius]
+
     goal_found = False
-    for _ in range(max_iter):
-    
-        # Generate a random point around the last added node
-        last_added = list(nodes.keys())[-1]
-        random_point = (random.uniform(last_added[0] - 1, last_added[0] + 1),
-                        random.uniform(last_added[1] - 1, last_added[1] + 1),
-                        random.uniform(last_added[2] - 1, last_added[2] + 1))
+    #for _ in range(max_iter):
+    while not goal_found:
+        random_point = sample_free()  # Sample a random point
+        nearest_node = nearest(random_point)  # Find the nearest node to the random point
+        new_node = steer(nearest_node, random_point)  # Steer towards the random point
+        new_cost = cost(nearest_node) + distance(nearest_node, new_node)  # Calculate the cost of the new node
         
-        # Find the nearest node in nodes to the random_point
-        min_dist = float('inf')
-        nearest_node = None
-        
-        for node in nodes:
-            dist = math.sqrt((node[0] - random_point[0])**2 + 
-                             (node[1] - random_point[1])**2 + 
-                             (node[2] - random_point[2])**2)
-            if dist < min_dist:
-                min_dist = dist
-                nearest_node = node
-        
-        # Attempt to connect nearest_node to random_point
-        if nearest_node:
-            # Calculate cost to reach the random_point through nearest_node
-            new_cost = cost(nearest_node) + min_dist
-            
-            if (abs(random_point[0] - FINAL_X) < 0.5) and (abs(random_point[1] - FINAL_Y) < 0.5) and (abs(random_point[2] - FINAL_Z) < 0.5):
-                # Add the final point to nodes and break
-                nodes[(FINAL_X, FINAL_Y, FINAL_Z)] = {'parent': nearest_node, 'cost': new_cost + min_dist}
-                goal_found = True
+        # If the new node is not in nodes or its cost is less than the current cost
+        if new_node not in nodes or new_cost < cost(new_node):
+            nodes[new_node] = {'parent': nearest_node, 'cost': new_cost}  # Add the new node to nodes
+
+            # For each node near the new node
+            for near_node in near_nodes(new_node):
+                if near_node == nearest_node:
+                    continue
+                new_near_cost = new_cost + distance(new_node, near_node)  # Calculate the cost of the near node
+                # If the new near cost is less than the current cost of the near node
+                if new_near_cost < cost(near_node):
+                    set_parent(near_node, new_node)  # Set the parent of the near node to the new node
+                    set_cost(near_node, new_near_cost)  # Set the cost of the near node to the new near cost
+
+            # If the new node is within the goal radius
+            if distance(new_node, (final_x, final_y)) < goal_radius:
+                nodes[(final_x, final_y)] = {'parent': new_node, 'cost': new_cost + distance(new_node, (final_x, final_y))}  # Add the goal to nodes
+                goal_found = True  # Set goal found to True
                 break
-            else:
-                # Add the random_point as a new node
-                nodes[random_point] = {'parent': nearest_node, 'cost': new_cost}
-                
-                # Rewire the tree to optimize costs
-                for node in nodes:
-                    if node != nearest_node:
-                        dist_to_new_node = math.sqrt((node[0] - random_point[0])**2 + 
-                                                     (node[1] - random_point[1])**2 + 
-                                                     (node[2] - random_point[2])**2)
-                        if dist_to_new_node < goal_radius:
-                            new_node_cost = new_cost + dist_to_new_node
-                            if new_node_cost < cost(node):
-                                set_parent(node, random_point)
-                                set_cost(node, new_node_cost)
-    
+
+    # If the goal was not found
     if not goal_found:
         # Add the final point to nodes 
-        nodes[(FINAL_X, FINAL_Y, FINAL_Z)] = {'parent': nearest_node, 'cost': new_cost + min_dist}
-        
-    # Construct the path from nodes
-    path = reconstruct_path((FINAL_X, FINAL_Y, FINAL_Z))
-    return path
+        nodes[(final_x, final_y)] = {'parent': nearest_node, 'cost': new_cost + distance(new_node, (final_x, final_y))}
+
+    # Return the reconstructed path from the goal to the start
+    return reconstruct_path((final_x, final_y))
 
 def random_waypoint_publisher():
     # Initialize publisher node
@@ -141,7 +154,7 @@ def random_waypoint_publisher():
     # Pause for 2 seconds
     time.sleep(2)
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
-    path = best_path(vehicleX, vehicleY, vehicleZ)
+    path = best_path(vehicleX, vehicleY, FINAL_X, FINAL_Y, [(0, 0), (0, 100), (100, 100), (100, 0)])
     rospy.loginfo("Best path generated: {}".format(path))
     
     # Iterate through path in order
@@ -153,9 +166,9 @@ def random_waypoint_publisher():
             waypoint = PointStamped()
             waypoint.header.stamp = rospy.Time.now()
             waypoint.header.frame_id = "map"
-            waypoint.point.x = point['x']
-            waypoint.point.y = point['y']
-            waypoint.point.z = point['z']
+            waypoint.point.x = point[0]
+            waypoint.point.y = point[1]
+            waypoint.point.z = vehicleZ
 
             way_pub.publish(waypoint)
             rospy.loginfo("Published waypoint: {}".format(waypoint))
