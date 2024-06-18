@@ -174,8 +174,8 @@ def random_waypoint_publisher():
             rospy.loginfo("Published waypoint: {}".format(waypoint))
             
             # Check if the vehicle is near the current waypoint
-            if (abs(vehicleX - point['x']) < 0.5 and
-                abs(vehicleY - point['y']) < 0.5 ):
+            if (abs(vehicleX - point[0]) < 1.0 and
+                abs(vehicleY - point[1]) < 1.0 ):
                 break  # Move to the next waypoint
             
             rate.sleep()
