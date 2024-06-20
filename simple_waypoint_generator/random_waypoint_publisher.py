@@ -35,7 +35,6 @@ class PoseListener:
 def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
     # Initialize nodes with the initial position
     nodes = {(initial_x, initial_y): {'parent': None, 'cost': 0}}
-    max_iter = 10000  # Maximum number of iterations
     goal_radius = 1.0  # Radius for goal proximity
     min_step_size = 2.0  # Minimum step size for each iteration
     step_size = 4.0  # Step size for each iteration
@@ -90,17 +89,18 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
         if distance(from_node, to_node) >  min_step_size and distance(from_node, to_node) < step_size:
             return to_node
         theta = math.atan2(to_node[1] - from_node[1], to_node[0] - from_node[0])
-        if distance(from_node, to_node) >  min_step_size:
-            return (from_node[0] + min_step_size * math.cos(theta), from_node[1] + min_step_size * math.sin(theta))
-        else:
+        if distance(from_node, to_node) > min_step_size:
             return (from_node[0] + step_size * math.cos(theta), from_node[1] + step_size * math.sin(theta))
+        else:
+            return (from_node[0] + min_step_size * math.cos(theta), from_node[1] + min_step_size * math.sin(theta))
 
     # Function to find nodes near a new node
     def near_nodes(new_node):
         return [node for node in nodes if distance(node, new_node) <= search_radius]
 
+    # Start a timer
+    start_time = time.time()
     goal_found = False
-    #for _ in range(max_iter):
     while not goal_found:
         random_point = sample_free()  # Sample a random point
         nearest_node = nearest(random_point)  # Find the nearest node to the random point
@@ -126,11 +126,41 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
                 nodes[(final_x, final_y)] = {'parent': new_node, 'cost': new_cost + distance(new_node, (final_x, final_y))}  # Add the goal to nodes
                 goal_found = True  # Set goal found to True
                 break
+        
+        # Get current time in relation to the start time
+        current_time = time.time() - start_time
+        # If the current time is greater than 60 seconds
+        # This ensures that the loop does not run indefinitely
+        if current_time > 60:
+            break
 
     # If the goal was not found
     if not goal_found:
+        # Find the nearest node to the goal
+        nearest_node = nearest((final_x, final_y))
         # Add the final point to nodes 
         nodes[(final_x, final_y)] = {'parent': nearest_node, 'cost': new_cost + distance(new_node, (final_x, final_y))}
+    
+    # Add an additional 1,000 nodes to improve the tree
+    for _ in range(1000):
+        random_point = sample_free()  # Sample a random point
+        nearest_node = nearest(random_point)  # Find the nearest node to the random point
+        new_node = steer(nearest_node, random_point)  # Steer towards the random point
+        new_cost = cost(nearest_node) + distance(nearest_node, new_node)  # Calculate the cost of the new node
+        
+        # If the new node is not in nodes or its cost is less than the current cost
+        if new_node not in nodes or new_cost < cost(new_node):
+            nodes[new_node] = {'parent': nearest_node, 'cost': new_cost}  # Add the new node to nodes
+
+            # For each node near the new node
+            for near_node in near_nodes(new_node):
+                if near_node == nearest_node:
+                    continue
+                new_near_cost = new_cost + distance(new_node, near_node)  # Calculate the cost of the near node
+                # If the new near cost is less than the current cost of the near node
+                if new_near_cost < cost(near_node):
+                    set_parent(near_node, new_node)  # Set the parent of the near node to the new node
+                    set_cost(near_node, new_near_cost)  # Set the cost of the near node to the new near cost
 
     # Return the reconstructed path from the goal to the start
     return reconstruct_path((final_x, final_y))
