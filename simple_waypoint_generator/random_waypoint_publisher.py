@@ -9,10 +9,6 @@ from nav_msgs.msg import Odometry
 import sensor_msgs.point_cloud2 as pc2
 import time
 
-# 7.092166900634766, 2.7193148136138916, 0.7565169930458069
-FINAL_X = 12
-FINAL_Y = 78
-
 class PoseListener:
     def __init__(self):
         self.vehicleX = 0.0
@@ -147,6 +143,9 @@ def random_waypoint_publisher():
     way_pub = rospy.Publisher('/way_point', PointStamped, queue_size=1)
     rate = rospy.Rate(1)
 
+    finalX = rospy.get_param('~finalX', 0.0)  # Default to 0.0 if parameter is not found
+    finalY = rospy.get_param('~finalY', 0.0)  # Default to 0.0 if parameter is not found
+
     poseListener = PoseListener()
     # Set a two second pause before this line is executed
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
@@ -154,7 +153,7 @@ def random_waypoint_publisher():
     # Pause for 2 seconds
     time.sleep(2)
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
-    path = best_path(vehicleX, vehicleY, FINAL_X, FINAL_Y, [(0, 0), (0, 100), (100, 100), (100, 0)])
+    path = best_path(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
     rospy.loginfo("Best path generated: {}".format(path))
     
     # Iterate through path in order
