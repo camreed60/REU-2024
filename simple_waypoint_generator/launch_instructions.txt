@@ -11,3 +11,31 @@ Change launch file to this ->
         <param name="finalY" value="$(arg finalY)" />
     </node>
 </launch>
+
+Code to graph solution:
+def plot_solution(path):
+    # Extract x and y coordinates from the path
+    x_coords = [node[0] for node in path]
+    y_coords = [node[1] for node in path]
+
+    # Create a new figure
+    plt.figure()
+
+    # Plot the path
+    plt.plot(x_coords, y_coords, 'o-', color='blue')
+
+    # Plot start and end points
+    plt.plot(x_coords[0], y_coords[0], 'go')  # Start in green
+    plt.plot(x_coords[-1], y_coords[-1], 'ro')  # End in red
+
+    # Set labels and title
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Best Path')
+
+    # Set X and Y scale
+    plt.xlim(0, 150)
+    plt.ylim(0, 150)
+
+    # Show the plot
+    plt.show()
