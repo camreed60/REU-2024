@@ -8,6 +8,7 @@ from sensor_msgs.msg import PointCloud2
 from nav_msgs.msg import Odometry
 import sensor_msgs.point_cloud2 as pc2
 import time
+import matplotlib.pyplot as plt
 
 class PoseListener:
     def __init__(self):
@@ -38,7 +39,7 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
     goal_radius = 1.0  # Radius for goal proximity
     min_step_size = 2.0  # Minimum step size for each iteration
     step_size = 4.0  # Step size for each iteration
-    search_radius = 4.0  # Search radius for nearby nodes
+    search_radius = 8.0  # Search radius for nearby nodes
 
     # Function to get the cost of a node
     def cost(node):
@@ -139,7 +140,7 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
         # Find the nearest node to the goal
         nearest_node = nearest((final_x, final_y))
         # Add the final point to nodes 
-        nodes[(final_x, final_y)] = {'parent': nearest_node, 'cost': new_cost + distance(new_node, (final_x, final_y))}
+        nodes[(final_x, final_y)] = {'parent': nearest_node, 'cost': cost(nearest_node) + distance(nearest_node, (final_x, final_y))}
     
     # Add an additional 1,000 nodes to improve the tree
     for _ in range(1000):
@@ -165,6 +166,33 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
     # Return the reconstructed path from the goal to the start
     return reconstruct_path((final_x, final_y))
 
+def plot_solution(path):
+    # Extract x and y coordinates from the path
+    x_coords = [node[0] for node in path]
+    y_coords = [node[1] for node in path]
+
+    # Create a new figure
+    plt.figure()
+
+    # Plot the path
+    plt.plot(x_coords, y_coords, 'o-', color='blue')
+
+    # Plot start and end points
+    plt.plot(x_coords[0], y_coords[0], 'go')  # Start in green
+    plt.plot(x_coords[-1], y_coords[-1], 'ro')  # End in red
+
+    # Set labels and title
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Best Path')
+
+    # Set X and Y scale
+    plt.xlim(0, 150)
+    plt.ylim(0, 150)
+
+    # Show the plot
+    plt.show()
+
 def random_waypoint_publisher():
     # Initialize publisher node
     rospy.init_node('random_waypoint_publisher', anonymous=True)
@@ -173,8 +201,8 @@ def random_waypoint_publisher():
     way_pub = rospy.Publisher('/way_point', PointStamped, queue_size=1)
     rate = rospy.Rate(1)
 
-    finalX = rospy.get_param('~finalX', 0.0)  # Default to 0.0 if parameter is not found
-    finalY = rospy.get_param('~finalY', 0.0)  # Default to 0.0 if parameter is not found
+    finalX = rospy.get_param('~finalX', 10.0)  # Default to 10.0 if parameter is not found
+    finalY = rospy.get_param('~finalY', 10.0)  # Default to 10.0 if parameter is not found
 
     poseListener = PoseListener()
     # Set a two second pause before this line is executed
@@ -184,7 +212,8 @@ def random_waypoint_publisher():
     time.sleep(2)
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
     path = best_path(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
-    rospy.loginfo("Best path generated: {}".format(path))
+    rospy.loginfo("A path has been generated.")
+    plot_solution(path)
     
     # Iterate through path in order
     for point in path:
