@@ -38,8 +38,9 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
     nodes = {(initial_x, initial_y): {'parent': None, 'cost': 0}}
     goal_radius = 1.0  # Radius for goal proximity
     min_step_size = 2.0  # Minimum step size for each iteration
-    step_size = 4.0  # Step size for each iteration
+    step_size = 4.0  # Maximum step size for each iteration
     search_radius = 8.0  # Search radius for nearby nodes
+    goal_node = (final_x, final_y) # Goal node
 
     # Function to get the cost of a node
     def cost(node):
@@ -121,11 +122,19 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
                 if new_near_cost < cost(near_node):
                     set_parent(near_node, new_node)  # Set the parent of the near node to the new node
                     set_cost(near_node, new_near_cost)  # Set the cost of the near node to the new near cost
-
+            
             # If the new node is within the goal radius
-            if distance(new_node, (final_x, final_y)) < goal_radius:
-                nodes[(final_x, final_y)] = {'parent': new_node, 'cost': new_cost + distance(new_node, (final_x, final_y))}  # Add the goal to nodes
+            if distance(new_node, goal_node) < goal_radius:
+                nodes[goal_node] = {'parent': new_node, 'cost': new_cost + distance(new_node, goal_node)}  # Add the goal to nodes
                 goal_found = True  # Set goal found to True
+                # Rewire tree
+                for near_node in near_nodes(goal_node):
+                    if near_node == new_node:
+                        continue
+                    new_near_cost = cost(near_node) + distance(goal_node, near_node)
+                    if new_near_cost < cost(goal_node):
+                        set_parent(goal_node, near_node)
+                        set_cost(goal_node, new_near_cost)
                 break
         
         # Get current time in relation to the start time
