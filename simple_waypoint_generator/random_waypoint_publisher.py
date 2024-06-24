@@ -171,14 +171,31 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
                 if new_near_cost < cost(near_node):
                     set_parent(near_node, new_node)  # Set the parent of the near node to the new node
                     set_cost(near_node, new_near_cost)  # Set the cost of the near node to the new near cost
-
+    
+    # Get current time in relation to the start time
+    current_time = time.time() - start_time
+    # If the current time is less than 30 seconds, rewire the whole tree
+    if current_time < 30:
+        # Rewire the whole tree
+        for node in nodes:
+            for near_node in near_nodes(node):
+                if near_node == get_parent(node):
+                    continue
+                new_near_cost = cost(node) + distance(node, near_node) # Calculate the cost of the near node
+                # If the new near cost is less than the current cost of the near node
+                if new_near_cost < cost(near_node):
+                    set_parent(near_node, node) # Set the parent of the near node to the new node
+                    set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
+                    
     # Return the reconstructed path from the goal to the start
     return reconstruct_path((final_x, final_y))
 
+# Function that calculates the distance between two points in a 2D space
 def calculate_distance(x1, y1, x2, y2):
     distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
     return distance
 
+# Function that displays plot of RRT* graph solution
 def plot_solution(path):
     # Extract x and y coordinates from the path
     x_coords = [node[0] for node in path]
@@ -264,6 +281,7 @@ def random_waypoint_publisher():
         # Publish the waypoints in the path back to the starting position
         navigate_path(path_segment, way_pub, rate, poseListener)
 
+# Function that publishes waypoints sequentially from the start position to the goal position
 def navigate_path(path, way_pub, rate, poseListener):
     # Iterate through path in order
     for point in path:
