@@ -130,7 +130,7 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
         
         # Get current time in relation to the start time
         current_time = time.time() - start_time
-        # If the current time is greater than 60 seconds
+        # If the current time is greater than 60 seconds, break out
         # This ensures that the loop does not run indefinitely
         if current_time > 60:
             break
@@ -165,6 +165,10 @@ def best_path(initial_x, initial_y, final_x, final_y, boundary_coordinates):
 
     # Return the reconstructed path from the goal to the start
     return reconstruct_path((final_x, final_y))
+
+def calculate_distance(x1, y1, x2, y2):
+    distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+    return distance
 
 def plot_solution(path):
     # Extract x and y coordinates from the path
@@ -213,21 +217,60 @@ def random_waypoint_publisher():
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
     path = best_path(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
     rospy.loginfo("A path has been generated.")
+    # Display solution using Matplotlib
     plot_solution(path)
+    # Publish the waypoints in the path
+    navigate_path(path, way_pub, rate, poseListener)
     
+    # If the agent is not close to the final coordinates,
+    # move back to the starting positon
+    vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
+    path_size = len(path) 
+    # Check if the vehicle is not close to the final waypoint
+    if (abs(vehicleX - path[path_size - 1][0]) > 1.0 and
+        abs(vehicleY - path[path_size - 1][1]) > 1.0):
+        rospy.loginfo("The final point was not reached. Returning to the starting positon.")
+        # Initialize an empty list to store distances
+        distances = []
+        # Determine which point in the path is closest to vehicle's current positon
+        for point in path:
+            # Compare how close the point is to the current position
+            vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
+            # Calculate distance between vehicle and current point in the path
+            distance = calculate_distance(vehicleX, vehicleY, point[0], point[1])
+            # Append the distance to the list
+            distances.append(distance)
+        # Get the index of the shortest distance in the array
+        index = 0
+        lowest = float('inf')
+        counter = 0
+        for values in distances:
+            if values < lowest:
+                index = counter
+                lowest = values
+            counter += 1
+        # Split the path at the point where the vehicle is currently closest to
+        path_segment = path[:index+1] 
+        path_segment.reverse()
+        # Publish the waypoints in the path back to the starting position
+        navigate_path(path_segment, way_pub, rate, poseListener)
+
+def navigate_path(path, way_pub, rate, poseListener):
     # Iterate through path in order
     for point in path:
+        # Start a timer
+        start_time = time.time()
         while not rospy.is_shutdown():
             vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
             rospy.loginfo("Current vehicle position: ({}, {}, {})".format(vehicleX, vehicleY, vehicleZ))
 
+            # Publish waypoint
             waypoint = PointStamped()
             waypoint.header.stamp = rospy.Time.now()
             waypoint.header.frame_id = "map"
             waypoint.point.x = point[0]
             waypoint.point.y = point[1]
             waypoint.point.z = vehicleZ
-
             way_pub.publish(waypoint)
             rospy.loginfo("Published waypoint: {}".format(waypoint))
             
@@ -235,6 +278,14 @@ def random_waypoint_publisher():
             if (abs(vehicleX - point[0]) < 1.0 and
                 abs(vehicleY - point[1]) < 1.0 ):
                 break  # Move to the next waypoint
+
+            # Get current time in relation to the start time
+            current_time = time.time() - start_time
+            # If the current time is greater than 15 seconds, move to the next waypoint
+            # This ensures that the loop does not run indefinitely
+            if current_time > 15:
+                rospy.loginfo("Waypoint not reached, moving to the next one...")
+                break
             
             rate.sleep()
 
