@@ -253,7 +253,7 @@ def random_waypoint_publisher():
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
     path_size = len(path) 
     # Check if the vehicle is not close to the final waypoint
-    if (abs(vehicleX - path[path_size - 1][0]) > 1.0 and
+    if (abs(vehicleX - path[path_size - 1][0]) > 1.0 or
         abs(vehicleY - path[path_size - 1][1]) > 1.0):
         rospy.loginfo("The final point was not reached. Returning to the starting positon.")
         # Initialize an empty list to store distances
