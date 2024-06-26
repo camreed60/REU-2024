@@ -7,6 +7,8 @@ import time
 import matplotlib.pyplot as plt
 from pose_listener import PoseListener
 from path_planner import RRTStarPathPlanner
+from advanced_path_planner import AdvancedRRTStarPathPlanner
+from traversability_listener import TraversabilityListener
 
 # Function that calculates the distance between two points in a 2D space
 def calculate_distance(x1, y1, x2, y2):
@@ -52,6 +54,7 @@ def random_waypoint_publisher():
     finalX = rospy.get_param('~finalX', 10.0)  # Default to 10.0 if parameter is not found
     finalY = rospy.get_param('~finalY', 10.0)  # Default to 10.0 if parameter is not found
 
+    # Initialize the pose listener
     poseListener = PoseListener()
     # Set a two second pause before this line is executed
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
@@ -60,8 +63,15 @@ def random_waypoint_publisher():
     time.sleep(2)
     # Get the current position of the vehicle
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
+    # Initialize the traversability listener
+    traversListener = TraversabilityListener()
+    # Generate a blank traversability map
+    # In the future, this will instead get the actual one
+    traversability_map = traversListener.generate_empty_map()
     # Initialize the path planner
     planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
+    # Initialize the advanced path planner
+    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)], traversability_map)
     # Plan the path
     path = planner.plan_path()
     rospy.loginfo("A path has been generated.")
