@@ -71,7 +71,7 @@ def random_waypoint_publisher():
     # Initialize the path planner
     planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
     # Initialize the advanced path planner
-    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)], traversability_map)
+    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)], traversability_map, 1000)
     # Plan the path
     path = planner.plan_path()
     rospy.loginfo("A path has been generated.")
