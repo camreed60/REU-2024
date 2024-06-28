@@ -58,6 +58,7 @@ class AdvancedRRTStarPathPlanner:
         path.reverse()
         return path
 
+    # Function to sample a free point in the environment
     def sample_free(self):
         # Use boundary box to sample points
         min_x = min(coordinate[0] for coordinate in self.boundary_coordinates)
@@ -91,31 +92,29 @@ class AdvancedRRTStarPathPlanner:
         minY = from_node[1] - int(self.step_size)
         # Compare the traversability of the frontier with the traversability of the calculated node
         if self.get_traversability(calculated_node) < np.max(frontier):
-            # Set an 80% chance that the node will be steered towards the maximum traversability
-            if random.random() < 1.8:
-                # Get the x and y coordinates of the maximum traversability value
-                max_x = self.get_highest_coordinates(frontier)[0]
-                max_y = self.get_highest_coordinates(frontier)[1]
-                # make a list of nodes
-                list_nodes = []
-                for x in max_x:
-                    for y in max_y:
-                        # If the node is within the boundary
-                        if (minX + x, minY + y) in self.boundary_coordinates:
-                            xy_node = (minX + x, minY + y)
-                            list_nodes.append(xy_node)
-                new_calculated_node = calculated_node
-                lowest_distance = float('inf')
-                # Return the closest node within the highest traversable area
-                for nodes in list_nodes:
-                    # Calculate the distance between the calculated node and the node in the list
-                    # Determine if it is less than the lowest distance
-                    if self.distance(nodes, calculated_node) < lowest_distance:
-                        # Set the lowest cost to the distance
-                        lowest_distance = self.distance(nodes, calculated_node)
-                        # Set the calculated node to the node in the list
-                        new_calculated_node = nodes
-                return new_calculated_node
+            # Get the x and y coordinates of the maximum traversability value
+            max_x = self.get_highest_coordinates(frontier)[0]
+            max_y = self.get_highest_coordinates(frontier)[1]
+            # make a list of nodes
+            list_nodes = []
+            for x in max_x:
+                for y in max_y:
+                    # If the node is within the boundary
+                    if (minX + x, minY + y) in self.boundary_coordinates:
+                        xy_node = (minX + x, minY + y)
+                        list_nodes.append(xy_node)
+            new_calculated_node = calculated_node
+            lowest_distance = float('inf')
+            # Return the closest node within the highest traversable area
+            for nodes in list_nodes:
+                # Calculate the distance between the calculated node and the node in the list
+                # Determine if it is less than the lowest distance
+                if self.distance(nodes, calculated_node) < lowest_distance:
+                    # Set the lowest cost to the distance
+                    lowest_distance = self.distance(nodes, calculated_node)
+                    # Set the calculated node to the node in the list
+                    new_calculated_node = nodes
+            return new_calculated_node
         return calculated_node
 
     # Function to find nodes near a new node
@@ -141,7 +140,10 @@ class AdvancedRRTStarPathPlanner:
         if (node_traversability == 1 and parent_traversability == 1):
             return self.cost(parent) + distance_cost
         else:
-            traversability_cost = self.traversability_weight / ((node_traversability + parent_traversability) / 2)
+            try:
+                traversability_cost = self.traversability_weight / ((node_traversability + parent_traversability) / 2)
+            except ZeroDivisionError:
+                traversability_cost = float('inf')
             return self.cost(parent) + distance_cost + traversability_cost
 
     # Function to get the frontier of the traversability map around the node (Based on Traversability Map)
@@ -153,11 +155,20 @@ class AdvancedRRTStarPathPlanner:
         y_range = slice(max(0, y - int(self.step_size)), min(self.traversability_map.shape[0], y + int(self.step_size) + 1))
         return self.traversability_map[y_range, x_range]
 
+    # Function to get the coordinates from the highest coordinates of the frontier
+    def get_highest_coordinates(self, frontier):
+        # Get the maximum traversability value
+        max_value = np.max(frontier)
+        # Get the x and y coordinates of the maximum traversability value
+        max_x, max_y = np.where(frontier == max_value)
+        return max_x, max_y
+
     # Function to plan the path from the start to the goal using RRT*
     def plan_path(self):
         start_time = time.time()
+        loop = True
         goal_found = False
-        while not goal_found:
+        while loop:
             random_point = self.sample_free()  # Sample a random point
             nearest_node = self.nearest(random_point)  # Find the nearest node to the random point
             new_node = self.steer(nearest_node, random_point)  # Steer towards the random point
@@ -194,26 +205,27 @@ class AdvancedRRTStarPathPlanner:
                             if self.set_parent(near_node, new_node): # Set the parent of the near node to the new node
                                 self.set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
                     
-                    # If the new node is within the goal radius
-                    if self.distance(new_node, self.goal_node) < self.goal_radius:
-                        goal_traversability = self.get_traversability(self.goal_node)
-                        if goal_traversability > 0:  # Ensure the goal node is in a traversable area
-                            self.nodes[self.goal_node] = {'parent': new_node, 'cost': new_cost + self.distance(new_node, self.goal_node) / goal_traversability}
-                            goal_found = True # Set goal found to True
-                            
-                            # Rewire the tree considering traversability
-                            for near_node in self.near_nodes(self.goal_node):
-                                if near_node == new_node:
-                                    continue
+                    if (not goal_found):
+                        # If the new node is within the goal radius
+                        if self.distance(new_node, self.goal_node) < self.goal_radius:
+                            goal_traversability = self.get_traversability(self.goal_node)
+                            if goal_traversability > 0:  # Ensure the goal node is in a traversable area
+                                self.nodes[self.goal_node] = {'parent': new_node, 'cost': new_cost + self.distance(new_node, self.goal_node) / goal_traversability}
+                                goal_found = True # Set goal found to True
                                 
-                                traversability_near = self.get_traversability(near_node)
-                                if traversability_near == 0:  # Skip nodes that are in impassable areas
-                                    continue
-                                
-                                new_near_cost = self.calculate_cost(near_node, self.goal_node) # Calculate the new near cost
-                                if new_near_cost < self.cost(self.goal_node):
-                                    if (self.set_parent(self.goal_node, near_node)):
-                                        self.set_cost(self.goal_node, new_near_cost)
+                                # Rewire the tree considering traversability
+                                for near_node in self.near_nodes(self.goal_node):
+                                    if near_node == new_node:
+                                        continue
+                                    
+                                    traversability_near = self.get_traversability(near_node)
+                                    if traversability_near == 0:  # Skip nodes that are in impassable areas
+                                        continue
+                                    
+                                    new_near_cost = self.calculate_cost(near_node, self.goal_node) # Calculate the new near cost
+                                    if new_near_cost < self.cost(self.goal_node):
+                                        if (self.set_parent(self.goal_node, near_node)):
+                                            self.set_cost(self.goal_node, new_near_cost)
             
             current_time = time.time() - start_time
             if current_time > 60:
@@ -259,21 +271,17 @@ class AdvancedRRTStarPathPlanner:
                         if new_near_cost < self.cost(near_node):
                             if self.set_parent(near_node, new_node): # Set the parent of the near node to the new node
                                 self.set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
-
-        # Get current time in relation to the start time
-        current_time = time.time() - start_time
-        # If the current time is less than 60 seconds, rewire the whole tree
-        if current_time < 60:
-            # Rewire the whole tree
-            for node in self.nodes:
-                for near_node in self.near_nodes(node):
-                    if near_node == self.get_parent(node):
-                        continue
-                    new_near_cost = self.calculate_cost(near_node, node) # Calculate the new near cost
-                    # If the new near cost is less than the current cost of the near node
-                    if new_near_cost < self.cost(near_node):
-                        self.set_parent(near_node, node) # Set the parent of the near node to the new node
-                        self.set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
-
+        
+        # Rewire the whole tree
+        for node in self.nodes:
+            for near_node in self.near_nodes(node):
+                if near_node == self.get_parent(node):
+                    continue
+                new_near_cost = self.calculate_cost(near_node, node) # Calculate the new near cost
+                # If the new near cost is less than the current cost of the near node
+                if new_near_cost < self.cost(near_node):
+                    self.set_parent(near_node, node) # Set the parent of the near node to the new node
+                    self.set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
+         
         # Return the reconstructed path from the goal to the start
         return self.reconstruct_path()
