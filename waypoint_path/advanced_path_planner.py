@@ -60,13 +60,24 @@ class AdvancedRRTStarPathPlanner:
 
     # Function to sample a free point in the environment
     def sample_free(self):
-        # Use boundary box to sample points
         min_x = min(coordinate[0] for coordinate in self.boundary_coordinates)
         max_x = max(coordinate[0] for coordinate in self.boundary_coordinates)
         min_y = min(coordinate[1] for coordinate in self.boundary_coordinates)
         max_y = max(coordinate[1] for coordinate in self.boundary_coordinates)
         
-        return (random.uniform(min_x, max_x), random.uniform(min_y, max_y))
+        while True:
+            point = (random.uniform(min_x, max_x), random.uniform(min_y, max_y))
+            if self.is_within_boundary(point):
+                return point
+
+    # Function to check if a point is within the boundary
+    def is_within_boundary(self, point):
+        min_x = min(coordinate[0] for coordinate in self.boundary_coordinates)
+        max_x = max(coordinate[0] for coordinate in self.boundary_coordinates)
+        min_y = min(coordinate[1] for coordinate in self.boundary_coordinates)
+        max_y = max(coordinate[1] for coordinate in self.boundary_coordinates)
+        x, y = point
+        return (min_x <= x <= max_x) and (min_y <= y <= max_y)
 
     # Function to find the nearest node to a given node
     def nearest(self, node):
@@ -74,10 +85,11 @@ class AdvancedRRTStarPathPlanner:
 
     # Function to steer from one node to another
     def steer(self, from_node, to_node):
-        if self.distance(from_node, to_node) > self.min_step_size and self.distance(from_node, to_node) < self.step_size:
+        distance = self.distance(from_node, to_node)
+        if distance > self.min_step_size and distance < self.step_size:
             return to_node
         theta = math.atan2(to_node[1] - from_node[1], to_node[0] - from_node[0])
-        if self.distance(from_node, to_node) > self.min_step_size:
+        if distance > self.min_step_size:
             calculated_node = (from_node[0] + self.step_size * math.cos(theta), from_node[1] + self.step_size * math.sin(theta))
             return self.steer_travs(from_node, calculated_node)
         else:
@@ -92,9 +104,10 @@ class AdvancedRRTStarPathPlanner:
         minY = from_node[1] - int(self.step_size)
         # Compare the traversability of the frontier with the traversability of the calculated node
         if self.get_traversability(calculated_node) < np.max(frontier):
+            coordinates = self.get_highest_coordinates(frontier)
             # Get the x and y coordinates of the maximum traversability value
-            max_x = self.get_highest_coordinates(frontier)[0]
-            max_y = self.get_highest_coordinates(frontier)[1]
+            max_x = coordinates[0]
+            max_y = coordinates[1]
             # make a list of nodes
             list_nodes = []
             for x in max_x:
@@ -123,14 +136,20 @@ class AdvancedRRTStarPathPlanner:
 
     # Function to get the traversability value of a node (It will be between 0 <= x <= 1)
     def get_traversability(self, node):
-        x, y = int(node[0]), int(node[1])
-        # Get the smallest adjacent block's traversability value
-        smallest_value = min(self.traversability_map[y][x],
-                            self.traversability_map[y + 1][x + 1], self.traversability_map[y + 1][x],
-                            self.traversability_map[y][x + 1], self.traversability_map[y - 1][x - 1],
-                            self.traversability_map[y - 1][x], self.traversability_map[y][x - 1],
-                            self.traversability_map[y - 1][x + 1], self.traversability_map[y + 1][x - 1])
-        return smallest_value
+        try:
+            x, y = int(node[0]), int(node[1])
+            # Check if the node borders the boundary
+            if (x == 0 or x == self.traversability_map.shape[1] - 1 or y == 0 or y == self.traversability_map.shape[0] - 1):
+                return self.traversability_map[y][x]
+            # Get the smallest adjacent block's traversability value
+            smallest_value = min(self.traversability_map[y][x],
+                                self.traversability_map[y + 1][x + 1], self.traversability_map[y + 1][x],
+                                self.traversability_map[y][x + 1], self.traversability_map[y - 1][x - 1],
+                                self.traversability_map[y - 1][x], self.traversability_map[y][x - 1],
+                                self.traversability_map[y - 1][x + 1], self.traversability_map[y + 1][x - 1])
+            return smallest_value
+        except IndexError:
+            return 0
     
     # Function to calculate the cost of a new node
     def calculate_cost(self, node, parent):
@@ -165,10 +184,23 @@ class AdvancedRRTStarPathPlanner:
 
     # Function to plan the path from the start to the goal using RRT*
     def plan_path(self):
+        # Calculate the distance between the start and the goal
+        distance = self.distance(self.initial_node, self.goal_node)
+        # If the distance is less than the step size
+        if distance < self.step_size:
+            return [self.initial_node, self.goal_node]
+        time_limit = 60
+        # Based on the distance, calculate the time limit
+        if distance < 120:
+            time_limit = distance / 2
+        if time_limit > 10:
+            # If 75% or more of the environment is traversable, set the time limit to 10 seconds
+            if np.count_nonzero(self.traversability_map == 1) / self.traversability_map.size >= 0.75:
+                time_limit = 10
+
         start_time = time.time()
-        loop = True
         goal_found = False
-        while loop:
+        while True:
             random_point = self.sample_free()  # Sample a random point
             nearest_node = self.nearest(random_point)  # Find the nearest node to the random point
             new_node = self.steer(nearest_node, random_point)  # Steer towards the random point
@@ -179,7 +211,7 @@ class AdvancedRRTStarPathPlanner:
                 current_time = time.time() - start_time
                 # If the current time is greater than 60 seconds
                 # This ensures that the loop does not run indefinitely
-                if current_time > 60:
+                if current_time > time_limit:
                     break
                 continue
             new_cost = self.calculate_cost(new_node, nearest_node)
@@ -228,7 +260,7 @@ class AdvancedRRTStarPathPlanner:
                                             self.set_cost(self.goal_node, new_near_cost)
             
             current_time = time.time() - start_time
-            if current_time > 60:
+            if current_time > time_limit:
                 break
         
         # If the goal was not found, find the nearest node to the goal
@@ -236,7 +268,8 @@ class AdvancedRRTStarPathPlanner:
             nearest_node = self.nearest(self.goal_node)
             # Add the final point to nodes
             self.nodes[self.goal_node] = {'parent': nearest_node, 'cost': self.cost(nearest_node) + self.distance(nearest_node, self.goal_node)}
-        
+
+        #TODO: Consider removing the following for-loop to decrease the time complexity
         # Add an additional 1,000 nodes to improve the tree
         for _ in range(1000):
             found = False
@@ -276,6 +309,9 @@ class AdvancedRRTStarPathPlanner:
         for node in self.nodes:
             for near_node in self.near_nodes(node):
                 if near_node == self.get_parent(node):
+                    continue
+                traversability_near = self.get_traversability(near_node)
+                if traversability_near == 0:  # Skip nodes that are in impassable areas
                     continue
                 new_near_cost = self.calculate_cost(near_node, node) # Calculate the new near cost
                 # If the new near cost is less than the current cost of the near node
