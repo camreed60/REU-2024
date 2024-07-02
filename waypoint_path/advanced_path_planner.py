@@ -4,13 +4,41 @@ import math
 import random
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 class AdvancedRRTStarPathPlanner:
-    def __init__(self, initial_x, initial_y, final_x, final_y, boundary_coordinates, traversability_map, traversability_weight):
+    def __init__(self, initial_x, initial_y, final_x, final_y, traversability_weight, 
+                 travs_quadrant1, travs_quadrant2, travs_quadrant3, travs_quadrant4):
         self.initial_node = (initial_x, initial_y)
         self.goal_node = (final_x, final_y)
-        self.boundary_coordinates = boundary_coordinates
-        self.traversability_map = traversability_map
+        # Set the traversability maps for the four quadrants
+        # If the traversability maps are not provided, set them to a 1x1 zero matrix
+        if travs_quadrant1 is not None:
+            self.travs_quadrant1 = travs_quadrant1
+        else:
+            self.travs_quadrant1 = np.zeros((1, 1))
+        if travs_quadrant2 is not None:
+            self.travs_quadrant2 = travs_quadrant2
+        else:
+            self.travs_quadrant2 = np.zeros((1, 1))
+        if travs_quadrant3 is not None:
+            self.travs_quadrant3 = travs_quadrant3
+        else:
+            self.travs_quadrant3 = np.zeros((1, 1))
+        if travs_quadrant4 is not None:
+            self.travs_quadrant4 = travs_quadrant4
+        else:
+            self.travs_quadrant4 = np.zeros((1, 1))
+        # Get the broad corner x, y coordinate from the four traversability quadrant maps
+        max_x = max(self.travs_quadrant1.shape[1], self.travs_quadrant4.shape[1])
+        min_x = max(self.travs_quadrant2.shape[1], self.travs_quadrant3.shape[1])
+        min_x = - min_x
+        max_y = max(self.travs_quadrant1.shape[0], self.travs_quadrant2.shape[0])
+        min_y = max(self.travs_quadrant3.shape[0], self.travs_quadrant4.shape[0])
+        min_y = - min_y
+
+        # Set the boundary coordinates based on the x, y coordinates
+        self.boundary_coordinates = [(min_x, min_y), (max_x, min_y), (max_x, max_y), (min_x, max_y)]
         self.traversability_weight = traversability_weight
         
         # Initialize nodes with the initial position
@@ -138,15 +166,30 @@ class AdvancedRRTStarPathPlanner:
     def get_traversability(self, node):
         try:
             x, y = int(node[0]), int(node[1])
+            # If X and Y are positive, set traversability map to quadrant 1
+            if x >= 0 and y >= 0:
+                travs_map = self.travs_quadrant1
+            # If X is negative and Y is positive, set traversability map to quadrant 2
+            elif x < 0 and y >= 0:
+                travs_map = self.travs_quadrant2
+            # If X and Y are negative, set traversability map to quadrant 3
+            elif x < 0 and y < 0:
+                travs_map = self.travs_quadrant3
+            # If X is positive and Y is negative, set traversability map to quadrant 4
+            else:
+                travs_map = self.travs_quadrant4
+            # Set X and Y to their absolute values
+            x = abs(x)
+            y = abs(y)
             # Check if the node borders the boundary
-            if (x == 0 or x == self.traversability_map.shape[1] - 1 or y == 0 or y == self.traversability_map.shape[0] - 1):
-                return self.traversability_map[y][x]
+            if (x == 0 or x == travs_map.shape[1] - 1 or y == 0 or y == travs_map.shape[0] - 1):
+                return travs_map[y][x]
             # Get the smallest adjacent block's traversability value
-            smallest_value = min(self.traversability_map[y][x],
-                                self.traversability_map[y + 1][x + 1], self.traversability_map[y + 1][x],
-                                self.traversability_map[y][x + 1], self.traversability_map[y - 1][x - 1],
-                                self.traversability_map[y - 1][x], self.traversability_map[y][x - 1],
-                                self.traversability_map[y - 1][x + 1], self.traversability_map[y + 1][x - 1])
+            smallest_value = min(travs_map[y][x],
+                                travs_map[y + 1][x + 1], travs_map[y + 1][x],
+                                travs_map[y][x + 1], travs_map[y - 1][x - 1],
+                                travs_map[y - 1][x], travs_map[y][x - 1],
+                                travs_map[y - 1][x + 1], travs_map[y + 1][x - 1])
             return smallest_value
         except IndexError:
             return 0
@@ -168,11 +211,26 @@ class AdvancedRRTStarPathPlanner:
     # Function to get the frontier of the traversability map around the node (Based on Traversability Map)
     def get_frontier(self, node):
         x, y = int(node[0]), int(node[1])
+        # If X and Y are positive, set traversability map to quadrant 1
+        if x >= 0 and y >= 0:
+            travs_map = self.travs_quadrant1
+        # If X is negative and Y is positive, set traversability map to quadrant 2
+        elif x < 0 and y >= 0:
+            travs_map = self.travs_quadrant2
+        # If X and Y are negative, set traversability map to quadrant 3
+        elif x < 0 and y < 0:
+            travs_map = self.travs_quadrant3
+        # If X is positive and Y is negative, set traversability map to quadrant 4
+        else:
+            travs_map = self.travs_quadrant4
+        # Set X and Y to their absolute values
+        x = abs(x)
+        y = abs(y)
         # Get a slice of the traversability map around the node
         # Based on the max step size
-        x_range = slice(max(0, x - int(self.step_size)), min(self.traversability_map.shape[1], x + int(self.step_size) + 1))
-        y_range = slice(max(0, y - int(self.step_size)), min(self.traversability_map.shape[0], y + int(self.step_size) + 1))
-        return self.traversability_map[y_range, x_range]
+        x_range = slice(max(0, x - int(self.step_size)), min(travs_map.shape[1], x + int(self.step_size) + 1))
+        y_range = slice(max(0, y - int(self.step_size)), min(travs_map.shape[0], y + int(self.step_size) + 1))
+        return travs_map[y_range, x_range]
 
     # Function to get the coordinates from the highest coordinates of the frontier
     def get_highest_coordinates(self, frontier):
@@ -194,8 +252,13 @@ class AdvancedRRTStarPathPlanner:
         if distance < 120:
             time_limit = distance / 2
         if time_limit > 10:
+            # Merge four quandrants together to check what percentage of the environment is traversable
+            traversability_map = (np.count_nonzero(self.travs_quadrant1 == 1) + np.count_nonzero(self.travs_quadrant2 == 1)
+                                + np.count_nonzero(self.travs_quadrant3 == 1) + np.count_nonzero(self.travs_quadrant4 == 1)) / (
+                                    self.travs_quadrant1.size + self.travs_quadrant2.size + self.travs_quadrant3.size + 
+                                    self.travs_quadrant4.size)
             # If 75% or more of the environment is traversable, set the time limit to 10 seconds
-            if np.count_nonzero(self.traversability_map == 1) / self.traversability_map.size >= 0.75:
+            if traversability_map >= 0.75:
                 time_limit = 10
 
         start_time = time.time()
