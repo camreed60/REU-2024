@@ -1,0 +1,4 @@
+<launch>
+  <node name="concatenate_node" pkg="filter_segmented_classes" type="stitching_pointcloudsv2.py" output="screen">
+  </node>
+</launch>
