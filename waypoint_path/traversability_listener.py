@@ -11,7 +11,6 @@ class TraversabilityListener:
     def __init__(self):
         pass
 
-    def generate_empty_map(self):
-        width, height = 500, 500
-        traversability_map = np.random.uniform(low=1, high=1, size=(width,height))
-        return traversability_map
+    # Generate an empty map for testing purposes
+    def generate_empty_map(self, width, height):
+        return np.random.uniform(low=1, high=1, size=(width,height))

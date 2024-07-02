@@ -67,9 +67,9 @@ def random_waypoint_publisher():
     traversListener = TraversabilityListener()
     # Generate a blank traversability map
     # In the future, this will instead get the actual one
-    traversability_map = traversListener.generate_empty_map()
+    traversability_map = traversListener.generate_empty_map(100, 100)
     # Initialize the path planner
-    planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
+    planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, traversability_map, traversability_map, traversability_map, traversability_map)
     # Initialize the advanced path planner
     advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)], traversability_map, 1000)
     # Plan the path

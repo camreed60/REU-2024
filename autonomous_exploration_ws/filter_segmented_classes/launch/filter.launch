@@ -1,4 +1,0 @@
-<launch>
-  <node name="filter_node" pkg="filter_segmented_classes" type="segmenting_every_pointv2.py" output="screen">
-  </node>
-</launch>
