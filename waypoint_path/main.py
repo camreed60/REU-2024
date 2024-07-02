@@ -69,11 +69,11 @@ def random_waypoint_publisher():
     # In the future, this will instead get the actual one
     traversability_map = traversListener.generate_empty_map(100, 100)
     # Initialize the path planner
-    planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, traversability_map, traversability_map, traversability_map, traversability_map)
+    planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
     # Initialize the advanced path planner
-    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)], traversability_map, 1000)
+    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, traversability_map, traversability_map, traversability_map, traversability_map)
     # Plan the path
-    path = planner.plan_path()
+    path = advanced_planner.plan_path()
     rospy.loginfo("A path has been generated.")
     # Display solution using Matplotlib
     plot_solution(path)
