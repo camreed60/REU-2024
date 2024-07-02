@@ -1,8 +1,0 @@
-prefix=/usr/local
-
-Name: filter_segmented_classes
-Description: Description of filter_segmented_classes
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
