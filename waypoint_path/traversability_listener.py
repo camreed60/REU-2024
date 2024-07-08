@@ -5,6 +5,7 @@ import numpy as np
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 import matplotlib.pyplot as plt
+import io
 
 # TODO: In the future, this class will be used to
 # construct a 2D Traversability Map and will then 
@@ -22,8 +23,7 @@ class TraversabilityListener:
         self.points_list = list(self.cloud_points)
 
     def build_traversability_map(self):
-        x_coords = [point[0] for point in self.points_list]
-        y_coords = [point[1] for point in self.points_list]
+        scale_value = 1
 
         x_coords = [point[0] for point in self.points_list]
         y_coords = [point[1] for point in self.points_list]
@@ -34,29 +34,32 @@ class TraversabilityListener:
             traversability_values = []
             
             # Initialize empty maps for each quadrant
-            map_q1 = np.full((int(max_y - min_y) + 1, int(max_x - min_x) + 1), 0.0)
-            map_q2 = np.full((int(max_y - min_y) + 1, int(max_x - min_x) + 1), 0.0)
-            map_q3 = np.full((int(max_y - min_y) + 1, int(max_x - min_x) + 1), 0.0)
-            map_q4 = np.full((int(max_y - min_y) + 1, int(max_x - min_x) + 1), 0.0)
+            map_q1 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+            map_q2 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+            map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+            map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
             
             for point in self.points_list:
                 x, y = point[:2]
+                y_scale = scale_value * y 
+                x_scale = scale_value * x
+                y_value = int(y_scale)
+                x_value = int(x_scale)
                 color_tuple = self.extract_color_tuple(point)
                 traversability_value = self.convert_colors_to_traversability_value(color_tuple)
                 traversability_values.append(traversability_value)
-                if traversability_value == 1:
-                    # First quadrant
-                    if x >= 0 and y >= 0:
-                        map_q1[int(y), int(x)] = traversability_value
-                    # Second quadrant (x values are made positive)
-                    elif x < 0 and y >= 0:
-                        map_q2[int(y), int(abs(x))] = traversability_value
-                    # Third quadrant (x and y values are made positive)
-                    elif x < 0 and y < 0:
-                        map_q3[int(abs(y)), int(abs(x))] = traversability_value
-                    # Fourth quadrant (y values are made positive)
-                    elif x >= 0 and y < 0:
-                        map_q4[int(abs(y)), int(x)] = traversability_value
+                # First quadrant
+                if x >= 0 and y >= 0:
+                    map_q1[abs(y_value), abs(x_value)] = traversability_value
+                # Second quadrant (x values are made positive)
+                elif x < 0 and y >= 0:
+                    map_q2[abs(y_value), abs(x_value)] = traversability_value
+                # Third quadrant (x and y values are made positive)
+                elif x < 0 and y < 0:
+                    map_q3[abs(y_value), abs(x_value)] = traversability_value
+                # Fourth quadrant (y values are made positive)
+                elif x >= 0 and y < 0:
+                    map_q4[abs(y_value), abs(x_value)] = traversability_value
             
             # Plotting
             plt.figure(figsize=(10, 8))
