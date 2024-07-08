@@ -32,13 +32,32 @@ class TraversabilityListener:
             min_x, max_x = min(x_coords), max(x_coords)
             min_y, max_y = min(y_coords), max(y_coords)
             traversability_values = []
+            rospy.loginfo("MinX: %d", min_x)
+            rospy.loginfo("MinY: %d", min_y)
+            rospy.loginfo("MaxX: %d", max_x)
+            rospy.loginfo("MaxY: %d", max_y)
             
             # Initialize empty maps for each quadrant
-            map_q1 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
-            map_q2 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
-            map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
-            map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
-            
+            if (max_y > 0 and max_x > 0):
+                map_q1 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+                map_q2 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+                map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+                map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(max_x - min_x) + 1), 0.0)
+            elif max_y <= 0 and max_x > 0:
+                map_q1 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(max_x - min_x) + 1), 0.0)
+                map_q2 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(max_x - min_x) + 1), 0.0)
+                map_q3 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(max_x - min_x) + 1), 0.0)
+                map_q4 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(max_x - min_x) + 1), 0.0)
+            elif max_y <= 0 and max_x <= 0:
+                map_q1 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(abs(min_x) + 1)), 0.0)
+                map_q2 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(abs(min_x) + 1)), 0.0)
+                map_q3 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(abs(min_x) + 1)), 0.0)
+                map_q4 = np.full((scale_value * int(abs(min_y) + 1), scale_value * int(abs(min_x) + 1)), 0.0)
+            elif max_y > 0 and max_x <= 0:
+                map_q1 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
+                map_q2 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
+                map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
+                map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
             for point in self.points_list:
                 x, y = point[:2]
                 y_scale = scale_value * y 
@@ -82,9 +101,9 @@ class TraversabilityListener:
     def convert_colors_to_traversability_value(self, color_tuple):
         # Define the color mappings with tolerance
         color_map = {
-            (255, 0, 0): 0.8,           # Red
+            (255, 0, 0): 0.8,           # Red: 
             (0, 255, 0): 0.5,           # Green
-            (0, 0, 255): 0.4,           # Blue
+            (0, 0, 255): 1.0,           # Blue: Mulch
             (255, 255, 0): 0.0,         # Yellow
             (255, 0, 255): 0.0,         # Magenta
             (0, 255, 255): 1.0,         # Cyan
