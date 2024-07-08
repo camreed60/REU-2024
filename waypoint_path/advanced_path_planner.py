@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 
 class AdvancedRRTStarPathPlanner:
     def __init__(self, initial_x, initial_y, final_x, final_y, traversability_weight, 
-                 travs_quadrant1, travs_quadrant2, travs_quadrant3, travs_quadrant4):
+                 travs_quadrant1 = None, travs_quadrant2 = None, travs_quadrant3 = None, 
+                 travs_quadrant4 = None, scale = None):
         self.initial_node = (initial_x, initial_y)
         self.goal_node = (final_x, final_y)
         # Set the traversability maps for the four quadrants
@@ -29,6 +30,10 @@ class AdvancedRRTStarPathPlanner:
             self.travs_quadrant4 = travs_quadrant4
         else:
             self.travs_quadrant4 = np.zeros((1, 1))
+        if scale is not None:
+            self.scale = scale
+        else:
+            self.scale = 1
         # Get the broad corner x, y coordinate from the four traversability quadrant maps
         max_x = max(self.travs_quadrant1.shape[1], self.travs_quadrant4.shape[1])
         min_x = max(self.travs_quadrant2.shape[1], self.travs_quadrant3.shape[1])
@@ -43,10 +48,10 @@ class AdvancedRRTStarPathPlanner:
         
         # Initialize nodes with the initial position
         self.nodes = {self.initial_node: {'parent': None, 'cost': 0}}
-        self.goal_radius = 8.0  # Radius for goal proximity
-        self.min_step_size = 4.0  # Minimum step size for each iteration
-        self.step_size = 8.0  # Maximum step size for each iteration
-        self.search_radius = 8.0  # Search radius for nearby nodes
+        self.goal_radius = 8.0 * self.scale  # Radius for goal proximity
+        self.min_step_size = 4.0 * self.scale # Minimum step size for each iteration
+        self.step_size = 8.0 * self.scale # Maximum step size for each iteration
+        self.search_radius = 8.0 * self.scale # Search radius for nearby nodes
 
     # Function to get the cost of a node
     def cost(self, node):
@@ -185,11 +190,7 @@ class AdvancedRRTStarPathPlanner:
             if (x == 0 or x == travs_map.shape[1] - 1 or y == 0 or y == travs_map.shape[0] - 1):
                 return travs_map[y][x]
             # Get the smallest adjacent block's traversability value
-            smallest_value = min(travs_map[y][x],
-                                travs_map[y + 1][x + 1], travs_map[y + 1][x],
-                                travs_map[y][x + 1], travs_map[y - 1][x - 1],
-                                travs_map[y - 1][x], travs_map[y][x - 1],
-                                travs_map[y - 1][x + 1], travs_map[y + 1][x - 1])
+            smallest_value = travs_map[y][x]
             return smallest_value
         except IndexError:
             return 0
