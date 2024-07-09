@@ -10,8 +10,6 @@ class AdvancedRRTStarPathPlanner:
     def __init__(self, initial_x, initial_y, final_x, final_y, traversability_weight, 
                  travs_quadrant1 = None, travs_quadrant2 = None, travs_quadrant3 = None, 
                  travs_quadrant4 = None, scale = None):
-        self.initial_node = (initial_x, initial_y)
-        self.goal_node = (final_x, final_y)
         # Set the traversability maps for the four quadrants
         # If the traversability maps are not provided, set them to a 1x1 zero matrix
         if travs_quadrant1 is not None:
@@ -41,6 +39,13 @@ class AdvancedRRTStarPathPlanner:
         max_y = max(self.travs_quadrant1.shape[0], self.travs_quadrant2.shape[0])
         min_y = max(self.travs_quadrant3.shape[0], self.travs_quadrant4.shape[0])
         min_y = - min_y
+        initial_x = initial_x * scale
+        initial_y = initial_y * scale
+        final_x = final_x * scale
+        final_y = final_y * scale
+
+        self.initial_node = (initial_x, initial_y)
+        self.goal_node = (final_x, final_y)
 
         # Set the boundary coordinates based on the x, y coordinates
         self.boundary_coordinates = [(min_x, min_y), (max_x, min_y), (max_x, max_y), (min_x, max_y)]
@@ -48,10 +53,10 @@ class AdvancedRRTStarPathPlanner:
         
         # Initialize nodes with the initial position
         self.nodes = {self.initial_node: {'parent': None, 'cost': 0}}
-        self.goal_radius = 8.0 * self.scale  # Radius for goal proximity
-        self.min_step_size = 4.0 * self.scale # Minimum step size for each iteration
-        self.step_size = 8.0 * self.scale # Maximum step size for each iteration
-        self.search_radius = 8.0 * self.scale # Search radius for nearby nodes
+        self.goal_radius = 4.0 * self.scale  # Radius for goal proximity
+        self.min_step_size = 2.0 * self.scale # Minimum step size for each iteration
+        self.step_size = 4.0 * self.scale # Maximum step size for each iteration
+        self.search_radius = 2.0 * self.scale # Search radius for nearby nodes
 
     # Function to get the cost of a node
     def cost(self, node):
