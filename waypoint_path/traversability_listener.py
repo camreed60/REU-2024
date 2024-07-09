@@ -13,8 +13,10 @@ import io
 # the advanced RRT Star Path Planner.
 
 class TraversabilityListener:
-    def __init__(self):
+    def __init__(self, scale_value):
         self.points_list = []
+        self.scale_value = int(scale_value)
+
         # Subscribe to the /stitched_pointcloud topic
         rospy.Subscriber("/stitched_pointcloud", PointCloud2, self.callback)
         
@@ -23,19 +25,17 @@ class TraversabilityListener:
         self.points_list = list(self.cloud_points)
 
     def build_traversability_map(self):
-        scale_value = 1
+        scale_value = self.scale_value
 
-        x_coords = [point[0] for point in self.points_list]
-        y_coords = [point[1] for point in self.points_list]
+        points_list = self.points_list
+        x_coords = [point[0] for point in points_list]
+        y_coords = [point[1] for point in points_list]
+
 
         if len(x_coords) > 0 and len(y_coords) > 0:
             min_x, max_x = min(x_coords), max(x_coords)
             min_y, max_y = min(y_coords), max(y_coords)
             traversability_values = []
-            rospy.loginfo("MinX: %d", min_x)
-            rospy.loginfo("MinY: %d", min_y)
-            rospy.loginfo("MaxX: %d", max_x)
-            rospy.loginfo("MaxY: %d", max_y)
             
             # Initialize empty maps for each quadrant
             if (max_y > 0 and max_x > 0):
@@ -58,7 +58,8 @@ class TraversabilityListener:
                 map_q2 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
                 map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
                 map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
-            for point in self.points_list:
+
+            for point in points_list:
                 x, y = point[:2]
                 y_scale = scale_value * y 
                 x_scale = scale_value * x
@@ -89,7 +90,7 @@ class TraversabilityListener:
             plt.ylabel('Y')
             plt.grid(True)
             plt.show()
-            
+
             return map_q1, map_q2, map_q3, map_q4
 
     def extract_color_tuple(self, point):
@@ -101,14 +102,14 @@ class TraversabilityListener:
     def convert_colors_to_traversability_value(self, color_tuple):
         # Define the color mappings with tolerance
         color_map = {
-            (255, 0, 0): 0.8,           # Red: 
-            (0, 255, 0): 0.5,           # Green
+            (255, 0, 0): 0.8,           # Red: Grass 
+            (0, 255, 0): 0.5,           # Green: Gravel
             (0, 0, 255): 1.0,           # Blue: Mulch
-            (255, 255, 0): 0.0,         # Yellow
-            (255, 0, 255): 0.0,         # Magenta
-            (0, 255, 255): 1.0,         # Cyan
-            (255, 128, 0): 0.0,         # Orange
-            (128, 0, 255): 0.2          # Purple
+            (255, 255, 0): 0.0,         # Yellow: Obstacle
+            (255, 0, 255): 0.0,         # Magenta: Parking Lot
+            (0, 255, 255): 1.0,         # Cyan: Path 
+            (255, 128, 0): 0.0,         # Orange: Unused
+            (128, 0, 255): 0.2          # Purple: Vegetation
         }
 
         # Define tolerance for color matching
