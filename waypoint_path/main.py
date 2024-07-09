@@ -53,6 +53,7 @@ def random_waypoint_publisher():
 
     finalX = rospy.get_param('~finalX', 10.0)  # Default to 10.0 if parameter is not found
     finalY = rospy.get_param('~finalY', 10.0)  # Default to 10.0 if parameter is not found
+    scale = 1
 
     # Initialize the pose listener
     poseListener = PoseListener()
@@ -64,21 +65,30 @@ def random_waypoint_publisher():
     # Get the current position of the vehicle
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
     # Initialize the traversability listener
-    traversListener = TraversabilityListener()
-    # Generate a blank traversability map
-    # In the future, this will instead get the actual one
+    traversListener = TraversabilityListener(scale)
+    # Pause for 5 seconds
+    time.sleep(5)
+    # Generate a blank traversability map (Use in the case where one cannot be constructed)
     traversability_map = traversListener.generate_empty_map(100, 100)
+    try:
+        quad1, quad2, quad3, quad4 = traversListener.build_traversability_map()
+    except:
+        rospy.loginfo("Cannot find a stitched pointcloud. Using a blank traversability map.")
+        quad1 = traversability_map
+        quad2 = traversability_map
+        quad3 = traversability_map
+        quad4 = traversability_map
     # Initialize the path planner
     planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
     # Initialize the advanced path planner
-    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, traversability_map, traversability_map, traversability_map, traversability_map)
+    advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, quad1, quad2, quad3, quad4, scale)
     # Plan the path
     path = advanced_planner.plan_path()
     rospy.loginfo("A path has been generated.")
     # Display solution using Matplotlib
     plot_solution(path)
     # Publish the waypoints in the path
-    navigate_path(path, way_pub, rate, poseListener)
+    navigate_path(path, way_pub, rate, poseListener, scale)
     
     # If the agent is not close to the final coordinates,
     # move back to the starting positon
@@ -94,7 +104,7 @@ def random_waypoint_publisher():
             # Compare how close the point is to the current position
             vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
             # Calculate distance between vehicle and current point in the path
-            distance = calculate_distance(vehicleX, vehicleY, point[0], point[1])
+            distance = calculate_distance(vehicleX, vehicleY, (point[0] / scale), (point[1] / scale))
             # Append the distance to the list
             distances.append(distance)
         # Get the index of the shortest distance in the array
@@ -110,10 +120,10 @@ def random_waypoint_publisher():
         path_segment = path[:index+1] 
         path_segment.reverse()
         # Publish the waypoints in the path back to the starting position
-        navigate_path(path_segment, way_pub, rate, poseListener)
+        navigate_path(path_segment, way_pub, rate, poseListener, scale)
 
 # Function that publishes waypoints sequentially from the start position to the goal position
-def navigate_path(path, way_pub, rate, poseListener):
+def navigate_path(path, way_pub, rate, poseListener, scale):
     # Iterate through path in order
     for point in path:
         # Start a timer
@@ -126,15 +136,15 @@ def navigate_path(path, way_pub, rate, poseListener):
             waypoint = PointStamped()
             waypoint.header.stamp = rospy.Time.now()
             waypoint.header.frame_id = "map"
-            waypoint.point.x = point[0]
-            waypoint.point.y = point[1]
+            waypoint.point.x = point[0] / scale
+            waypoint.point.y = point[1] / scale
             waypoint.point.z = vehicleZ
             way_pub.publish(waypoint)
             rospy.loginfo("Published waypoint: {}".format(waypoint))
             
             # Check if the vehicle is near the current waypoint
-            if (abs(vehicleX - point[0]) < 1.0 and
-                abs(vehicleY - point[1]) < 1.0 ):
+            if (abs(vehicleX - (point[0] / scale)) < 1.0 and
+                abs(vehicleY - (point[1] / scale)) < 1.0 ):
                 break  # Move to the next waypoint
 
             # Get current time in relation to the start time
