@@ -4,11 +4,54 @@ import rospy
 import math
 from geometry_msgs.msg import PointStamped
 import time
+import numpy as np
 import matplotlib.pyplot as plt
 from pose_listener import PoseListener
 from path_planner import RRTStarPathPlanner
 from advanced_path_planner import AdvancedRRTStarPathPlanner
 from traversability_listener import TraversabilityListener
+
+# Function to display four quadrant traversability map
+def display_four_quadrant_traversability_map(travs_quad1, travs_quad2, travs_quad3, travs_quad4):
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    
+    # The first quadrant is displayed in the top-right
+    axs[0, 1].imshow(travs_quad1, cmap='viridis', origin='lower')
+    axs[0, 1].set_title('Quadrant 1')
+    
+    # The second quadrant is flipped horizontally and displayed in the top-left
+    axs[0, 0].imshow(np.fliplr(travs_quad2), cmap='viridis', origin='lower')
+    axs[0, 0].set_title('Quadrant 2')
+    
+    # The third quadrant is flipped both horizontally and vertically and displayed in the bottom-left
+    axs[1, 0].imshow(np.flip(travs_quad3), cmap='viridis', origin='lower')
+    axs[1, 0].set_title('Quadrant 3')
+    
+    # The fourth quadrant is flipped vertically, displayed in the bottom-right
+    axs[1, 1].imshow(np.flipud(travs_quad4), cmap='viridis', origin='lower')
+    axs[1, 1].set_title('Quadrant 4')
+    
+    # Set a common title, xlabel, and ylabel for the figure
+    fig.suptitle('Traversability Map')
+    fig.supxlabel('X')
+    fig.supylabel('Y')
+    
+    plt.tight_layout()
+    plt.show()
+
+# Graph overlay function
+def graph_overlay(traversability_map, path, width, height):
+    plt.imshow(traversability_map, cmap='viridis', origin='lower')
+    plt.colorbar(label='Traversability')
+    plt.title('Traversability Map')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    # Add path
+    x_coords = [node[0] for node in path]
+    y_coords = [node[1] for node in path]
+    
+    plt.plot(x_coords, y_coords, 'o-', color='blue')
+    plt.show()
 
 # Function that calculates the distance between two points in a 2D space
 def calculate_distance(x1, y1, x2, y2):
@@ -53,7 +96,7 @@ def random_waypoint_publisher():
 
     finalX = rospy.get_param('~finalX', 10.0)  # Default to 10.0 if parameter is not found
     finalY = rospy.get_param('~finalY', 10.0)  # Default to 10.0 if parameter is not found
-    scale = 1
+    scale = 5
 
     # Initialize the pose listener
     poseListener = PoseListener()
@@ -72,6 +115,7 @@ def random_waypoint_publisher():
     traversability_map = traversListener.generate_empty_map(100, 100)
     try:
         quad1, quad2, quad3, quad4 = traversListener.build_traversability_map()
+        display_four_quadrant_traversability_map(quad1, quad2, quad3, quad4)
     except:
         rospy.loginfo("Cannot find a stitched pointcloud. Using a blank traversability map.")
         quad1 = traversability_map

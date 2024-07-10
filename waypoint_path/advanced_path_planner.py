@@ -53,10 +53,10 @@ class AdvancedRRTStarPathPlanner:
         
         # Initialize nodes with the initial position
         self.nodes = {self.initial_node: {'parent': None, 'cost': 0}}
-        self.goal_radius = 4.0 * self.scale  # Radius for goal proximity
-        self.min_step_size = 2.0 * self.scale # Minimum step size for each iteration
-        self.step_size = 4.0 * self.scale # Maximum step size for each iteration
-        self.search_radius = 2.0 * self.scale # Search radius for nearby nodes
+        self.goal_radius = 4.0   # Radius for goal proximity
+        self.min_step_size = 2.0 # Minimum step size for each iteration
+        self.step_size = 4.0  # Maximum step size for each iteration
+        self.search_radius = 2.0  # Search radius for nearby nodes
 
     # Function to get the cost of a node
     def cost(self, node):
@@ -373,7 +373,7 @@ class AdvancedRRTStarPathPlanner:
                         if new_near_cost < self.cost(near_node):
                             if self.set_parent(near_node, new_node): # Set the parent of the near node to the new node
                                 self.set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
-        
+                                
         # Rewire the whole tree
         for node in self.nodes:
             for near_node in self.near_nodes(node):
