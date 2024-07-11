@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 import rospy
+import time
 import numpy as np
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
 
-# TODO: In the future, this class will be used to
-# construct a 2D Traversability Map and will then 
-# return it to the waypoint path node for use with 
+# Constructs a 2D Traversability Map and then 
+# returns it to the waypoint path node for use with 
 # the advanced RRT Star Path Planner.
 
 class TraversabilityListener:
@@ -59,9 +59,6 @@ class TraversabilityListener:
                 map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
                 map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), 0.0)
             
-            # Build the traversability maps for the planner
-            self.optimize_quadrants(map_q1, map_q2, map_q3, map_q4)
-
             # Plotting
             for point in points_list:
                 color_tuple = self.extract_color_tuple(point)
@@ -76,6 +73,9 @@ class TraversabilityListener:
             plt.grid(True)
             plt.show()
 
+            # Build the traversability maps for the planner
+            self.optimize_quadrants(map_q1, map_q2, map_q3, map_q4)
+
             return map_q1, map_q2, map_q3, map_q4
 
     def extract_color_tuple(self, point):
@@ -87,14 +87,9 @@ class TraversabilityListener:
     def convert_colors_to_traversability_value(self, color_tuple):
         # Define the color mappings with tolerance
         color_map = {
-            (255, 0, 0): 0.2,           # Red: Grass 
-            (0, 255, 0): 0.3,           # Green: Gravel
-            (0, 0, 255): 1.0,           # Blue: Mulch
-            (255, 255, 0): 0.0,         # Yellow: Obstacle
-            (255, 0, 255): 0.0,         # Magenta: Parking Lot
-            (0, 255, 255): 1.0,         # Cyan: Path 
-            (255, 128, 0): 0.0,         # Orange: Unused
-            (128, 0, 255): 0.2          # Purple: Vegetation
+            (0, 255, 0): 0.2,       
+            (255, 255, 0): 1.0,
+            (255, 0, 0): 0.0                
         }
 
         # Define tolerance for color matching
@@ -129,14 +124,24 @@ class TraversabilityListener:
                 # Find which color shows up the most in each block of the traversability map
                 if color_list:
                     most_common_color = max(set(color_list), key=color_list.count)
-                    traversability_value = self.convert_colors_to_traversability_value(most_common_color)
-                    map_q[y, x] = traversability_value
-                    
-        print("Creating traversability map for the path planner...")
-        process_quadrant(map_q1, 1, 1)
-        process_quadrant(map_q2, -1, 1)
-        process_quadrant(map_q3, -1, -1)
-        process_quadrant(map_q4, 1, -1)
+                    if (0 <= y < map_q.shape[0] and 0 <= x < map_q.shape[1]):
+                        traversability_value = self.convert_colors_to_traversability_value(most_common_color)
+                        map_q[y, x] = traversability_value
+
+        # Start timer to construct traversability map
+        start_time = time.time()
+        try:
+            print("Scaling traversability map for the path planner...")
+            process_quadrant(map_q1, 1, 1)
+            process_quadrant(map_q2, -1, 1)
+            process_quadrant(map_q3, -1, -1)
+            process_quadrant(map_q4, 1, -1)
+            current_time = time.time() - start_time
+            print("It took", current_time, "seconds to scale the traversability map for the planner.")
+        except Exception as e:
+            print("There was a problem:", e)
+            current_time = time.time() - start_time
+            print("Process ran for", current_time, "seconds.")
 
     # Generate an empty map in the case where a traversability map cannot be constructed
     def generate_empty_map(self, width, height):

@@ -39,6 +39,54 @@ def display_four_quadrant_traversability_map(travs_quad1, travs_quad2, travs_qua
     plt.tight_layout()
     plt.show()
 
+# (Not Completely Functional): Function to display four quadrant traversability map with path overlayed on it
+def final_display_four_quadrant_traversability_map(travs_quad1, travs_quad2, travs_quad3, travs_quad4, path):
+    # Get coordinates from final path in first quadrant
+    path_quad1 = [(x, y) for (x, y) in path if x >= 0 and y >= 0]
+
+    # Get coordinates from final path in second quadrant
+    path_quad2 = [(x, y) for (x, y) in path if x < 0 and y >= 0]
+
+    # Get coordinates from final path in third quadrant
+    path_quad3 = [(x, y) for (x, y) in path if x < 0 and y < 0]
+
+    # Get coordinates from final path in fourth quadrant
+    path_quad4 = [(x, y) for (x, y) in path if x >= 0 and y < 0]
+    
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    
+    # The first quadrant is displayed in the top-right
+    axs[0, 1].imshow(travs_quad1, cmap='viridis', origin='lower')
+    if (path_quad1 is not None):
+        axs[0, 1].plot([x for x, y in path_quad1], [y for x, y in path_quad1], color='red', marker='o')
+    axs[0, 1].set_title('Quadrant 1')
+    
+    # The second quadrant is flipped horizontally and displayed in the top-left
+    axs[0, 0].imshow(np.fliplr(travs_quad2), cmap='viridis', origin='lower')
+    if (path_quad2 is not None):
+        axs[0, 0].plot([-x for x, y in path_quad2], [y for x, y in path_quad2], color='red', marker='o')
+    axs[0, 0].set_title('Quadrant 2')
+    
+    # The third quadrant is flipped both horizontally and vertically and displayed in the bottom-left
+    axs[1, 0].imshow(np.flip(travs_quad3), cmap='viridis', origin='lower')
+    if (path_quad3 is not None):
+        axs[1, 0].plot([-x for x, y in path_quad3], [-y for x, y in path_quad3], color='red', marker='o')
+    axs[1, 0].set_title('Quadrant 3')
+    
+    # The fourth quadrant is flipped vertically, displayed in the bottom-right
+    axs[1, 1].imshow(np.flipud(travs_quad4), cmap='viridis', origin='lower')
+    if (path_quad4 is not None):
+        axs[1, 1].plot([x for x, y in path_quad4], [-y for x, y in path_quad4], color='red', marker='o')
+    axs[1, 1].set_title('Quadrant 4')
+    
+    # Set a common title, xlabel, and ylabel for the figure
+    fig.suptitle('Traversability Map with Final Path')
+    fig.supxlabel('X')
+    fig.supylabel('Y')
+    
+    plt.tight_layout()
+    plt.show()
+
 # Graph overlay function
 def graph_overlay(traversability_map, path, width, height):
     plt.imshow(traversability_map, cmap='viridis', origin='lower')
@@ -59,10 +107,10 @@ def calculate_distance(x1, y1, x2, y2):
     return distance
 
 # Function that displays plot of RRT* graph solution
-def plot_solution(path):
-    # Extract x and y coordinates from the path
-    x_coords = [node[0] for node in path]
-    y_coords = [node[1] for node in path]
+def plot_solution(path, scale):
+    # Extract x and y coordinates from the path and scale them
+    x_coords = [node[0] / scale for node in path]
+    y_coords = [node[1] / scale for node in path]
 
     # Create a new figure
     plt.figure()
@@ -79,9 +127,16 @@ def plot_solution(path):
     plt.ylabel('Y')
     plt.title('Best Path')
 
-    # Set X and Y scale
-    plt.xlim(0, 150)
-    plt.ylim(0, 150)
+    # Calculate the limits for the plot based on scaled coordinates
+    min_x = min(x_coords)
+    max_x = max(x_coords)
+    min_y = min(y_coords)
+    max_y = max(y_coords)
+
+    # Add padding to the limits
+    padding = 10
+    plt.xlim(min_x - padding, max_x + padding)
+    plt.ylim(min_y - padding, max_y + padding)
 
     # Show the plot
     plt.show()
@@ -96,7 +151,7 @@ def random_waypoint_publisher():
 
     finalX = rospy.get_param('~finalX', 10.0)  # Default to 10.0 if parameter is not found
     finalY = rospy.get_param('~finalY', 10.0)  # Default to 10.0 if parameter is not found
-    scale = 5
+    scale = int(rospy.get_param('~scale', 5.0))  # Default to 5.0 if parameter is not found
 
     # Initialize the pose listener
     poseListener = PoseListener()
@@ -122,6 +177,7 @@ def random_waypoint_publisher():
         quad2 = traversability_map
         quad3 = traversability_map
         quad4 = traversability_map
+    
     # Initialize the path planner
     planner = RRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, [(0, 0), (0, 100), (100, 100), (100, 0)])
     # Initialize the advanced path planner
@@ -130,7 +186,8 @@ def random_waypoint_publisher():
     path = advanced_planner.plan_path()
     rospy.loginfo("A path has been generated.")
     # Display solution using Matplotlib
-    plot_solution(path)
+    plot_solution(path, scale)
+    final_display_four_quadrant_traversability_map(quad1, quad2, quad3, quad4, path)
     # Publish the waypoints in the path
     navigate_path(path, way_pub, rate, poseListener, scale)
     
