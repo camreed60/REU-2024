@@ -17,6 +17,9 @@ class TraversabilityListener:
         self.points_list = []
         self.scale_value = int(scale_value)
         self.terrain_points_list = []
+        self.traversability_values = None
+        self.travs_x = None
+        self.travs_y = None
 
         # Subscribe to the /stitched_pointcloud topic
         rospy.Subscriber("/stitched_pointcloud", PointCloud2, self.callback_classes)
@@ -71,6 +74,9 @@ class TraversabilityListener:
                 color_tuple = self.extract_color_tuple(point)
                 traversability_value = self.convert_colors_to_traversability_value(color_tuple)
                 traversability_values.append(traversability_value)
+            self.traversability_values = traversability_values
+            self.travs_x = x_coords
+            self.travs_y = y_coords
             plt.figure(figsize=(10, 8))
             plt.scatter(x_coords, y_coords, c=traversability_values, cmap='viridis', s=10, alpha=0.8)
             plt.colorbar(label='Traversability Value')
@@ -142,11 +148,25 @@ class TraversabilityListener:
 
     def convert_colors_to_traversability_value(self, color_tuple):
         # Define the color mappings with tolerance
+        # Simulation:
+        
         color_map = {
             (0, 255, 0): 0.2,       
             (255, 255, 0): 1.0,
             (255, 0, 0): 0.0                
-        }
+        } 
+        '''
+        # Define colors for each class
+        color_map = {
+            (255, 255, 0): 0.2,   # yellow : grass    
+            (255, 128, 0): 0.0,    # Orange : rock 
+            (0, 255, 0): 1.0,   # green : rocky-trail   
+            (0, 0, 255): 0.05,  # blue : roots 
+            (255, 0, 0): 0.5,  # red: rough-trail
+            (0, 255, 255): 0.0,  # cyan : structure 
+            (150, 75, 0): 0.0,  # brown : tree-trunk
+            (128, 0, 255): 0.0  # Purple : vegetation 
+        }'''
 
         # Define tolerance for color matching
         tolerance = 20
@@ -172,8 +192,8 @@ class TraversabilityListener:
                 # Get a list of colors from within each block of the 2D array
                 x_value = (x * x_multiplier) / self.scale_value
                 y_value = (y * y_multiplier) / self.scale_value
-                box_min = np.array([x_value - 1, y_value - 1])
-                box_max = np.array([x_value , y_value ])
+                box_min = np.array([x_value, y_value])
+                box_max = np.array([x_value + 1, y_value + 1])
                 indices = kdtree.query_ball_point((box_min + box_max) / 2, np.linalg.norm(box_max - box_min) / 2)
                 relevant_points = points_array[indices]
                 color_list = [self.extract_color_tuple(point) for point in relevant_points]
@@ -227,8 +247,8 @@ class TraversabilityListener:
                     # Get a list of intensity from within each block of the 2D array
                     x_value = (x * x_multiplier) / self.scale_value
                     y_value = (y * y_multiplier) / self.scale_value
-                    box_min = np.array([x_value - 1, y_value - 1])
-                    box_max = np.array([x_value , y_value ])
+                    box_min = np.array([x_value, y_value])
+                    box_max = np.array([x_value + 1, y_value + 1])
                     indices = kdtree.query_ball_point((box_min + box_max) / 2, np.linalg.norm(box_max - box_min) / 2)
                     relevant_points = points_array[indices]
                     intensity_list = [point[3] for point in relevant_points]

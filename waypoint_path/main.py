@@ -39,52 +39,23 @@ def display_four_quadrant_traversability_map(travs_quad1, travs_quad2, travs_qua
     plt.tight_layout()
     plt.show()
 
-# (Not Completely Functional): Function to display four quadrant traversability map with path overlayed on it
-def final_display_four_quadrant_traversability_map(travs_quad1, travs_quad2, travs_quad3, travs_quad4, path):
-    # Get coordinates from final path in first quadrant
-    path_quad1 = [(x, y) for (x, y) in path if x >= 0 and y >= 0]
-
-    # Get coordinates from final path in second quadrant
-    path_quad2 = [(x, y) for (x, y) in path if x < 0 and y >= 0]
-
-    # Get coordinates from final path in third quadrant
-    path_quad3 = [(x, y) for (x, y) in path if x < 0 and y < 0]
-
-    # Get coordinates from final path in fourth quadrant
-    path_quad4 = [(x, y) for (x, y) in path if x >= 0 and y < 0]
-    
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-    
-    # The first quadrant is displayed in the top-right
-    axs[0, 1].imshow(travs_quad1, cmap='viridis', origin='lower')
-    if (path_quad1 is not None):
-        axs[0, 1].plot([x for x, y in path_quad1], [y for x, y in path_quad1], color='red', marker='o')
-    axs[0, 1].set_title('Quadrant 1')
-    
-    # The second quadrant is flipped horizontally and displayed in the top-left
-    axs[0, 0].imshow(np.fliplr(travs_quad2), cmap='viridis', origin='lower')
-    if (path_quad2 is not None):
-        axs[0, 0].plot([-x for x, y in path_quad2], [y for x, y in path_quad2], color='red', marker='o')
-    axs[0, 0].set_title('Quadrant 2')
-    
-    # The third quadrant is flipped both horizontally and vertically and displayed in the bottom-left
-    axs[1, 0].imshow(np.flip(travs_quad3), cmap='viridis', origin='lower')
-    if (path_quad3 is not None):
-        axs[1, 0].plot([-x for x, y in path_quad3], [-y for x, y in path_quad3], color='red', marker='o')
-    axs[1, 0].set_title('Quadrant 3')
-    
-    # The fourth quadrant is flipped vertically, displayed in the bottom-right
-    axs[1, 1].imshow(np.flipud(travs_quad4), cmap='viridis', origin='lower')
-    if (path_quad4 is not None):
-        axs[1, 1].plot([x for x, y in path_quad4], [-y for x, y in path_quad4], color='red', marker='o')
-    axs[1, 1].set_title('Quadrant 4')
-    
-    # Set a common title, xlabel, and ylabel for the figure
-    fig.suptitle('Traversability Map with Final Path')
-    fig.supxlabel('X')
-    fig.supylabel('Y')
-    
-    plt.tight_layout()
+# Function to display four quadrant traversability map with path overlayed on it
+def final_map_with_travs(travs_x, travs_y, travs_values, path, scale):
+    plt.figure(figsize=(10, 8))
+    plt.scatter(travs_x, travs_y, c=travs_values, cmap='viridis', s=10, alpha=0.8)
+    plt.colorbar(label='Traversability Value')
+    plt.title('Final Map')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.grid(True)
+    # Extract x and y coordinates from the path and scale them
+    x_coords = [node[0] / scale for node in path]
+    y_coords = [node[1] / scale for node in path]
+    # Plot the path
+    plt.plot(x_coords, y_coords, 'o-', color='blue')
+    # Plot start and end points
+    plt.plot(x_coords[0], y_coords[0], 'go')  # Start in green
+    plt.plot(x_coords[-1], y_coords[-1], 'ro')  # End in red
     plt.show()
 
 # Graph overlay function
@@ -184,10 +155,15 @@ def random_waypoint_publisher():
     advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, quad1, quad2, quad3, quad4, scale)
     # Plan the path
     path = advanced_planner.plan_path()
-    rospy.loginfo("A path has been generated.")
     # Display solution using Matplotlib
     plot_solution(path, scale)
-    final_display_four_quadrant_traversability_map(quad1, quad2, quad3, quad4, path)
+    travs_x = traversListener.travs_x
+    travs_y = traversListener.travs_y
+    travs_values = traversListener.traversability_values
+    try:
+        final_map_with_travs(travs_x, travs_y, travs_values, path, scale)
+    except:
+        pass
     # Publish the waypoints in the path
     navigate_path(path, way_pub, rate, poseListener, scale)
     

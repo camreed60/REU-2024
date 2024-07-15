@@ -10,6 +10,7 @@ class AdvancedRRTStarPathPlanner:
     def __init__(self, initial_x, initial_y, final_x, final_y, traversability_weight, 
                  travs_quadrant1 = None, travs_quadrant2 = None, travs_quadrant3 = None, 
                  travs_quadrant4 = None, scale = None):
+
         # Set the traversability maps for the four quadrants
         # If the traversability maps are not provided, set them to a 1x1 zero matrix
         if travs_quadrant1 is not None:
@@ -53,10 +54,10 @@ class AdvancedRRTStarPathPlanner:
         
         # Initialize nodes with the initial position
         self.nodes = {self.initial_node: {'parent': None, 'cost': 0}}
-        self.goal_radius = 4.0 # Radius for goal proximity
-        self.min_step_size = 2.0 # Minimum step size for each iteration
-        self.step_size = 4.0  # Maximum step size for each iteration
-        self.search_radius = 4.0 # Search radius for nearby nodes
+        self.goal_radius = 4.0 * self.scale # Radius for goal proximity
+        self.min_step_size = 2.0 * self.scale # Minimum step size for each iteration
+        self.step_size = 4.0 * self.scale # Maximum step size for each iteration
+        self.search_radius = 4.0 * self.scale # Search radius for nearby nodes
 
     # Function to get the cost of a node
     def cost(self, node):
@@ -129,10 +130,12 @@ class AdvancedRRTStarPathPlanner:
         theta = math.atan2(to_node[1] - from_node[1], to_node[0] - from_node[0])
         if distance > self.min_step_size:
             calculated_node = (from_node[0] + self.step_size * math.cos(theta), from_node[1] + self.step_size * math.sin(theta))
-            return self.steer_travs(from_node, calculated_node)
+            return calculated_node
+            #return self.steer_travs(from_node, calculated_node)
         else:
             calculated_node = (from_node[0] + self.min_step_size * math.cos(theta), from_node[1] + self.min_step_size * math.sin(theta))
-            return self.steer_travs(from_node, calculated_node)
+            return calculated_node
+            #return self.steer_travs(from_node, calculated_node)
 
     # Function to steer new node towards the highest traversable area
     def steer_travs(self, from_node, calculated_node):
@@ -248,6 +251,7 @@ class AdvancedRRTStarPathPlanner:
 
     # Function to plan the path from the start to the goal using RRT*
     def plan_path(self):
+        print("Generating a path...")
         # Calculate the distance between the start and the goal
         distance = self.distance(self.initial_node, self.goal_node)
         # If the distance is less than the step size
@@ -389,6 +393,47 @@ class AdvancedRRTStarPathPlanner:
                 if new_near_cost < self.cost(near_node):
                     self.set_parent(near_node, node) # Set the parent of the near node to the new node
                     self.set_cost(near_node, new_near_cost) # Set the cost of the near node to the new near cost
+        
+        current_time = time.time() - start_time
+        # Print the time it took to find a solution
+        print("It took", current_time, "seconds to find a path.")
+        '''
+        self.plot_whole_tree(self.nodes, [
+            (-1000, 0),
+            (-1000, 1000),
+            (1000, 1000),
+            (1000, 0)
+        ])
+        '''
          
         # Return the reconstructed path from the goal to the start
         return self.reconstruct_path()
+
+    # Function to plot the whole search tree for debug purposes
+    def plot_whole_tree(self, nodes, boundary_coordinates):
+        # Create a new figure
+        plt.figure()
+
+        # Plot the boundary
+        boundary_x = [coordinate[0] for coordinate in boundary_coordinates]
+        boundary_y = [coordinate[1] for coordinate in boundary_coordinates]
+        plt.plot(boundary_x + [boundary_x[0]], boundary_y + [boundary_y[0]], 'k--', label='Boundary')  # close the boundary
+
+        plt.title('Whole Tree')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        # Plot the nodes and the edges
+        for node, data in nodes.items():
+            if data['parent'] is not None:
+                parent_node = data['parent']
+                plt.plot([parent_node[0], node[0]], [parent_node[1], node[1]], 'r-')  # edge from parent to child
+            plt.plot(node[0], node[1], 'bo')  # node itself
+
+        # Set labels and title
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.title('Whole Tree')
+        plt.legend()
+
+        # Show the plot
+        plt.show()
