@@ -169,7 +169,7 @@ def random_waypoint_publisher():
     # Generate a blank traversability map (Use in the case where one cannot be constructed)
     traversability_map = traversListener.generate_empty_map(100, 100)
     try:
-        quad1, quad2, quad3, quad4 = traversListener.build_traversability_map()
+        quad1, quad2, quad3, quad4 = traversListener.controller()
         display_four_quadrant_traversability_map(quad1, quad2, quad3, quad4)
     except:
         rospy.loginfo("Cannot find a stitched pointcloud. Using a blank traversability map.")
