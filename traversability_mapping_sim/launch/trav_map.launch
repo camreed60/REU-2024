@@ -1,0 +1,4 @@
+<launch>
+  <node name="traversability_map_node" pkg="traversability_mapping_sim" type="sim_trav_map.py" output="screen">
+  </node>
+</launch>
