@@ -149,7 +149,7 @@ def random_waypoint_publisher():
         quad2 = traversability_map
         quad3 = traversability_map
         quad4 = traversability_map
-        
+    
     # Initialize the advanced path planner
     advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 10000, quad1, quad2, quad3, quad4, scale)
 
@@ -175,10 +175,6 @@ def random_waypoint_publisher():
 
     # Publish the waypoints in the path
     navigate_path(path, way_pub, rate, poseListener, scale)
-    # Semantic Based
-    #semantic_based_data(quad1, quad2, quad3, quad4, way_pub, rate, poseListener, scale, traversListener)
-    # Geometric Based
-    #geometric_based_data(way_pub, poseListener, quad1, quad2, quad3, quad4, scale)
 
     # If the agent is not close to the final coordinates,
     # move back to the starting positon
@@ -211,7 +207,7 @@ def random_waypoint_publisher():
         path_segment.reverse()
         # Publish the waypoints in the path back to the starting position
         navigate_path(path_segment, way_pub, rate, poseListener, scale)
-    
+   
     # End metrics collection
     metrics.end_timer()
     metrics.end_time_on_trail()
@@ -261,15 +257,14 @@ def semantic_based_data(quad1, quad2, quad3, quad4, way_pub, rate, poseListener,
     percent_time_list = []
     distance_traversed_list = []
     for i in range(0, 10):
-        print("Trial:",i+1)
         # Get the current position of the vehicle
         vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
         if (i == 0 or i == 2 or i== 4 or i== 6 or i == 8 or i == 10):
-            finalX = 27
-            finalY = -55
+            finalX = 26
+            finalY = 10
         else:
-            finalX = -37
-            finalY = -38
+            finalX = 8
+            finalY = -12
         advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 100000, quad1, quad2, quad3, quad4, scale)
         # Plan the path
         path = advanced_planner.plan_path()
@@ -318,13 +313,12 @@ def geometric_based_data(way_pub, poseListener, quad1, quad2, quad3, quad4, scal
     vehicleX, vehicleY, vehicleZ = poseListener.get_vehicle_position()
     
     for i in range(0, 10):
-        print("Trial:",i+1)
         if (i == 0 or i == 2 or i== 4 or i== 6 or i == 8 or i == 10):
-            finalX = 27
-            finalY = -55
+            finalX = 26
+            finalY = 10
         else:
-            finalX = -37
-            finalY = -38
+            finalX = 26
+            finalY = 10
         # Pause for 5 seconds
         time.sleep(5)
         # Start metrics collection
@@ -352,6 +346,7 @@ def geometric_based_data(way_pub, poseListener, quad1, quad2, quad3, quad4, scal
         metrics.end_timer()
         metrics.end_time_on_trail()
         total_distance_traversed = metrics.end_distance_traversed()
+        print(i)
         print("Total time:", metrics.total_time)
         print("Percent time on trail:", metrics.percent_time_on_trail)
         print("Total distance traversed:", total_distance_traversed)

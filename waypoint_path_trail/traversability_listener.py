@@ -134,13 +134,18 @@ class TraversabilityListener:
 
     def convert_colors_to_traversability_value(self, color_tuple):
         # Define the color mappings with tolerance
-        # Simulation:
         
+        # Define colors for each class
         color_map = {
-            (0, 255, 0): 0.00,       
-            (255, 255, 0): 1.0,
-            (255, 0, 0): 0.0                
-        } 
+            (255, 255, 0): 0.2,   # yellow : grass    
+            (255, 128, 0): 0.0,    # Orange : rock 
+            (0, 255, 0): 1.0,   # green : rocky-trail   
+            (0, 0, 255): 0.05,  # blue : roots 
+            (255, 0, 0): 0.5,  # red: rough-trail
+            (0, 255, 255): 0.0,  # cyan : structure 
+            (150, 75, 0): 0.0,  # brown : tree-trunk
+            (128, 0, 255): 0.0  # Purple : vegetation 
+        }
 
         # Define tolerance for color matching
         tolerance = 20
