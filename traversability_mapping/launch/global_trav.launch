@@ -1,4 +1,0 @@
-<launch>
-  <node name="global_trav_map_node" pkg="traversability_mapping" type="trav_map_global.py" output="screen">
-  </node>
-</launch>

@@ -1,4 +1,0 @@
-<launch>
-  <node name="segment_node" pkg="traversability_mapping" type="segmenting_pointcloud.py" output="screen">
-  </node>
-</launch>
