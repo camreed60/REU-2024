@@ -21,8 +21,8 @@ class TraversabilityListener:
         self.travs_x = None
         self.travs_y = None
 
-        # Subscribe to the /global_trav_map topic
-        rospy.Subscriber("/global_trav_map", PointCloud2, self.callback_classes)
+        # Subscribe to the /traversability_map topic
+        rospy.Subscriber("/traversability_map", PointCloud2, self.callback_classes)
     
     def controller(self):
         travs_result = self.build_traversability_map()
@@ -137,14 +137,15 @@ class TraversabilityListener:
         
         # Define colors for each class
         color_map = {
-            (255, 255, 0): 0.2,   # yellow : grass    
+            (255, 255, 0): 0.1,   # yellow : grass    
             (255, 128, 0): 0.0,    # Orange : rock 
             (0, 255, 0): 1.0,   # green : rocky-trail   
             (0, 0, 255): 0.05,  # blue : roots 
-            (255, 0, 0): 0.5,  # red: rough-trail
+            (255, 0, 255): 0.05,  # magnenta: rough-trail
             (0, 255, 255): 0.0,  # cyan : structure 
             (150, 75, 0): 0.0,  # brown : tree-trunk
-            (128, 0, 255): 0.0  # Purple : vegetation 
+            (128, 0, 255): 0.0,  # Purple : vegetation 
+            (255, 0, 0): 0.0  # Red: Geometric hazards
         }
 
         # Define tolerance for color matching

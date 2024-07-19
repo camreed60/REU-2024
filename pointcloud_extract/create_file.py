@@ -10,12 +10,12 @@ class PointCloudSubscriber:
         rospy.init_node('pointcloud_subscriber', anonymous=True)
         
         # Subscribe to the stitched_pointcloud topic
-        self.subscriber = rospy.Subscriber('/stitched_pointcloud', PointCloud2, self.callback)
+        self.subscriber = rospy.Subscriber('/traversability_map', PointCloud2, self.callback)
         
         # Define the file path
-        self.file_path = 'pointcloud.bin'
+        self.file_path = 'arboretum_2.bin'
         
-        rospy.loginfo("PointCloudSubscriber initialized and listening to /stitched_pointcloud topic")
+        rospy.loginfo("PointCloudSubscriber initialized and listening to /traversability_map topic")
     
     def callback(self, msg):
         rospy.loginfo("Received point cloud data, saving to file")

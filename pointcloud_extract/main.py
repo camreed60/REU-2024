@@ -24,7 +24,7 @@ def read_pointcloud_file_and_publish(file_path, publisher):
             
             # Publish the PointCloud2 message
             publisher.publish(point_cloud_msg)
-            print("Published point cloud data from file to stitched_pointcloud topic")
+            print("Published point cloud data from file to traversability_map topic")
 
         except IOError:
             rospy.logerr("Error reading file: %s", file_path)
@@ -36,10 +36,10 @@ def listener():
     rospy.init_node('pointcloud_publisher', anonymous=True)
     
     # Create a publisher for the stitched_pointcloud topic
-    publisher = rospy.Publisher('/stitched_pointcloud', PointCloud2, queue_size=10)
+    publisher = rospy.Publisher('/traversability_map', PointCloud2, queue_size=10)
     
     # Read and continuously publish the contents of pointcloud.bin
-    read_pointcloud_file_and_publish('arboretum.bin', publisher)
+    read_pointcloud_file_and_publish('arboretum_2.bin', publisher)
     
     # Keep the script running
     rospy.spin()

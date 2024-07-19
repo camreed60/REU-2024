@@ -6,6 +6,7 @@ from geometry_msgs.msg import PointStamped
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from pose_listener import PoseListener
 from path_planner import RRTStarPathPlanner
 from advanced_path_planner import AdvancedRRTStarPathPlanner
@@ -164,6 +165,24 @@ def random_waypoint_publisher():
         final_map_with_travs(travs_x, travs_y, travs_values, path, scale)
     except:
         pass
+    
+    try:
+        # Save data using pickle
+        pickle_data = {
+            'finalX': finalX,
+            'finalY': finalY,
+            'scale': scale,
+            'quad1': quad1,
+            'quad2': quad2,
+            'quad3': quad3,
+            'quad4': quad4,
+            'path': path
+        }
+        with open('waypoint_path.dat', 'wb') as f:
+            pickle.dump(pickle_data, f)
+        print("Saved path to waypoint_path.dat")
+    except Exception as e:
+        print(e)
 
     # Start metrics collection
     metrics = MetricCollection(quad1, quad2, quad3, quad4, scale)
