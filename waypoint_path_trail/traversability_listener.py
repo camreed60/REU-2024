@@ -63,9 +63,40 @@ class TraversabilityListener:
             self.traversability_values = traversability_values
             self.travs_x = x_coords
             self.travs_y = y_coords
+
+            # Define colors for each traversability value
+            color_map = {
+                1.0: 'green',    
+                0.1: 'yellow',   
+                0.01: 'orange',  
+                0.05: 'magenta',    
+                0.001: 'purple', 
+                0.0001: 'cyan',
+                0.0: 'red'
+            }
+
+            # Define class names corresponding to each traversability value
+            class_map = {
+                1.0: 'rocky-trail',          
+                0.1: 'grass',               
+                0.01: 'rock',               
+                0.05: 'rough-trail',         
+                0.001: 'vegetation', 
+                0.0001: 'structure',
+                0.0: 'geometric hazards'
+            }
+
+            # Create a scatter plot with specific colors
             plt.figure(figsize=(10, 8))
-            plt.scatter(x_coords, y_coords, c=traversability_values, cmap='viridis', s=10, alpha=0.8)
-            plt.colorbar(label='Traversability Value')
+            for value in color_map:
+                indices = [i for i, tv in enumerate(traversability_values) if tv == value]
+                plt.scatter(np.array(x_coords)[indices], np.array(y_coords)[indices],
+                            c=color_map[value], s=10, alpha=0.8, label=f'{value}: {class_map[value]}')
+
+            # Add legend with class names
+            handles = [plt.scatter([], [], color=color_map[value], label=f'{value}: {class_map[value]}') for value in color_map]
+            plt.legend(handles=handles, title='Traversability Values of Classes')
+
             plt.title('Traversability Map')
             plt.xlabel('X')
             plt.ylabel('Y')
@@ -138,13 +169,13 @@ class TraversabilityListener:
         # Define colors for each class
         color_map = {
             (255, 255, 0): 0.1,   # yellow : grass    
-            (255, 128, 0): 0.0,    # Orange : rock 
+            (255, 128, 0): 0.01,    # Orange : rock 
             (0, 255, 0): 1.0,   # green : rocky-trail   
             (0, 0, 255): 0.05,  # blue : roots 
             (255, 0, 255): 0.05,  # magnenta: rough-trail
-            (0, 255, 255): 0.0,  # cyan : structure 
-            (150, 75, 0): 0.0,  # brown : tree-trunk
-            (128, 0, 255): 0.0,  # Purple : vegetation 
+            (0, 255, 255): 0.0001,  # cyan : structure 
+            (150, 75, 0): 0.01,  # brown : tree-trunk
+            (128, 0, 255): 0.001,  # Purple : vegetation 
             (255, 0, 0): 0.0  # Red: Geometric hazards
         }
 
@@ -157,7 +188,7 @@ class TraversabilityListener:
                 return value
 
         # Default value for any unknown color
-        return 0.0
+        return 3.0
     
     # Optimize the quadrants to build the traversability maps for the planner
     def optimize_quadrants(self, map_q1, map_q2, map_q3, map_q4):
@@ -182,7 +213,8 @@ class TraversabilityListener:
                     most_common_color = max(set(color_list), key=color_list.count)
                     if (0 <= y < map_q.shape[0] and 0 <= x < map_q.shape[1]):
                         traversability_value = self.convert_colors_to_traversability_value(most_common_color)
-                        map_q[y, x] = traversability_value
+                        if (not (traversability_value == 3)):
+                            map_q[y, x] = traversability_value
 
         # Start timer to construct traversability map
         start_time = time.time()

@@ -21,8 +21,8 @@ class TraversabilityListener:
         self.travs_x = None
         self.travs_y = None
 
-        # Subscribe to the /global_trav_map topic
-        rospy.Subscriber("/global_trav_map", PointCloud2, self.callback_classes)
+        # Subscribe to the /traversability_map topic
+        rospy.Subscriber("/traversability_map", PointCloud2, self.callback_classes)
     
     def controller(self):
         travs_result = self.build_traversability_map()

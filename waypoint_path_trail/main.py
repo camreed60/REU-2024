@@ -43,9 +43,38 @@ def display_four_quadrant_traversability_map(travs_quad1, travs_quad2, travs_qua
 
 # Function to display four quadrant traversability map with path overlayed on it
 def final_map_with_travs(travs_x, travs_y, travs_values, path, scale):
+    # Define colors for each traversability value
+    color_map = {
+        1.0: 'green',    
+        0.1: 'yellow',   
+        0.01: 'orange',  
+        0.05: 'magenta',    
+        0.001: 'purple', 
+        0.0001: 'cyan',
+        0.0: 'red'
+    }
+
+    # Define class names corresponding to each traversability value
+    class_map = {
+        1.0: 'rocky-trail',          
+        0.1: 'grass',               
+        0.01: 'rock',               
+        0.05: 'rough-trail',         
+        0.001: 'vegetation', 
+        0.0001: 'structure',
+        0.0: 'geometric hazards'
+    }
+
+    # Create a scatter plot with specific colors
     plt.figure(figsize=(10, 8))
-    plt.scatter(travs_x, travs_y, c=travs_values, cmap='viridis', s=10, alpha=0.8)
-    plt.colorbar(label='Traversability Value')
+    for value in color_map:
+        indices = [i for i, tv in enumerate(travs_values) if tv == value]
+        plt.scatter(np.array(travs_x)[indices], np.array(travs_y)[indices],
+                    c=color_map[value], s=10, alpha=0.8, label=f'{value}: {class_map[value]}')
+    # Add legend with class names
+    handles = [plt.scatter([], [], color=color_map[value], label=f'{value}') for value in color_map]
+    plt.legend(handles=handles, title='Cost')
+    
     plt.title('Final Map')
     plt.xlabel('X')
     plt.ylabel('Y')
@@ -125,7 +154,7 @@ def random_waypoint_publisher():
     finalX = rospy.get_param('~finalX', 10.0)  # Default to 10.0 if parameter is not found
     finalY = rospy.get_param('~finalY', 10.0)  # Default to 10.0 if parameter is not found
     scale = int(rospy.get_param('~scale', 5.0))  # Default to 5.0 if parameter is not found
-
+    
     # Initialize the pose listener
     poseListener = PoseListener()
     # Set a two second pause before this line is executed
@@ -163,8 +192,8 @@ def random_waypoint_publisher():
     travs_values = traversListener.traversability_values
     try:
         final_map_with_travs(travs_x, travs_y, travs_values, path, scale)
-    except:
-        pass
+    except Exception as e:
+        print(e)
     
     try:
         # Save data using pickle
