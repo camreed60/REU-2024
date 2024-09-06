@@ -22,7 +22,21 @@ class TraversabilityListener:
         self.travs_y = None
 
         # Subscribe to the /traversability_map topic
-        rospy.Subscriber("/traversability_map", PointCloud2, self.callback_classes)
+        rospy.Subscriber("/trav_map", PointCloud2, self.callback_classes)
+    
+    # Pointcloud callback
+    def callback_classes(self, point_cloud):
+        self.cloud_points = pc2.read_points(point_cloud, skip_nans=True)
+        self.points_list = list(self.cloud_points)
+
+    # Get the traversability value of a point
+    def extract_trav_value(self, point):
+        intensity = point[3]
+        return intensity
+    
+    # Generate an empty map in the case where a traversability map cannot be constructed
+    def generate_empty_map(self, width, height):
+        return np.random.uniform(low=1, high=1, size=(width,height))
     
     def controller(self):
         travs_result = self.build_traversability_map()
@@ -31,10 +45,6 @@ class TraversabilityListener:
         map_q3 = travs_result[2]
         map_q4 = travs_result[3]
         return map_q1, map_q2, map_q3, map_q4
-    
-    def callback_classes(self, point_cloud):
-        self.cloud_points = pc2.read_points(point_cloud, skip_nans=True)
-        self.points_list = list(self.cloud_points)
 
     def build_traversability_map(self):
         scale_value = self.scale_value
@@ -57,46 +67,15 @@ class TraversabilityListener:
 
             # Plotting
             for point in points_list:
-                color_tuple = self.extract_color_tuple(point)
-                traversability_value = self.convert_colors_to_traversability_value(color_tuple)
+                traversability_value = self.extract_trav_value(point)
+                #traversability_value = self.convert_colors_to_traversability_value(color_tuple)
                 traversability_values.append(traversability_value)
             self.traversability_values = traversability_values
             self.travs_x = x_coords
             self.travs_y = y_coords
-
-            # Define colors for each traversability value
-            color_map = {
-                1.0: 'green',    
-                0.1: 'yellow',   
-                0.01: 'orange',  
-                0.05: 'magenta',    
-                0.001: 'purple', 
-                0.0001: 'cyan',
-                0.0: 'red'
-            }
-
-            # Define class names corresponding to each traversability value
-            class_map = {
-                1.0: 'rocky-trail',          
-                0.1: 'grass',               
-                0.01: 'rock',               
-                0.05: 'rough-trail',         
-                0.001: 'vegetation', 
-                0.0001: 'structure',
-                0.0: 'geometric hazards'
-            }
-
-            # Create a scatter plot with specific colors
             plt.figure(figsize=(10, 8))
-            for value in color_map:
-                indices = [i for i, tv in enumerate(traversability_values) if tv == value]
-                plt.scatter(np.array(x_coords)[indices], np.array(y_coords)[indices],
-                            c=color_map[value], s=10, alpha=0.8, label=f'{value}: {class_map[value]}')
-
-            # Add legend with class names
-            handles = [plt.scatter([], [], color=color_map[value], label=f'{value}: {class_map[value]}') for value in color_map]
-            plt.legend(handles=handles, title='Traversability Values of Classes')
-
+            plt.scatter(x_coords, y_coords, c=traversability_values, cmap='viridis', s=10, alpha=0.8)
+            plt.colorbar(label='Traversability Value')
             plt.title('Traversability Map')
             plt.xlabel('X')
             plt.ylabel('Y')
@@ -107,8 +86,52 @@ class TraversabilityListener:
             self.optimize_quadrants(map_q1, map_q2, map_q3, map_q4)
 
             return map_q1, map_q2, map_q3, map_q4
+    
 
-    # Function to initialize empty quadrant maps
+    # Optimize the quadrants to build the traversability maps for the planner
+    def optimize_quadrants(self, map_q1, map_q2, map_q3, map_q4):
+        # Create a KDTree for the points
+        points_array = np.array(self.points_list)
+        kdtree = KDTree(points_array[:, :2])
+
+        # Process each quadrant
+        def process_quadrant(map_q, x_multiplier, y_multiplier):
+            # Iterate through each element in the map
+            for (x, y), element in np.ndenumerate(map_q):
+                # Get a list of colors from within each block of the 2D array
+                x_value = (x * x_multiplier) / self.scale_value
+                y_value = (y * y_multiplier) / self.scale_value
+
+                box_min = np.array([x_value, y_value])
+                box_max = np.array([x_value + 1, y_value + 1])
+
+                indices = kdtree.query_ball_point((box_min + box_max) / 2, np.linalg.norm(box_max - box_min) / 2)
+                relevant_points = points_array[indices]
+
+                traversability_list = [self.extract_trav_value(point) for point in relevant_points]
+                # Find which color shows up the most in each block of the traversability map
+                if traversability_list:
+                    average_traversability = sum(traversability_list) / len(traversability_list)
+                    if (0 <= y < map_q.shape[0] and 0 <= x < map_q.shape[1]):
+                        map_q[y, x] = average_traversability
+
+        # Start timer to construct traversability map
+        start_time = time.time()
+        try:
+            print("Scaling traversability map for the path planner...")
+            process_quadrant(map_q1, 1, 1)
+            process_quadrant(map_q2, -1, 1)
+            process_quadrant(map_q3, -1, -1)
+            process_quadrant(map_q4, 1, -1)
+            current_time = time.time() - start_time
+            print("It took", current_time, "seconds to scale the traversability map for the planner.")
+        except Exception as e:
+            print("There was a problem:", e)
+            current_time = time.time() - start_time
+            print("Process ran for", current_time, "seconds.")
+
+    
+    #Function to initialize empty quadrant maps
     def initialize_empty_quadrants(self, min_x, max_x, min_y, max_y, scale_value, initial_value):
         if (min_y > 0 and max_y > 0 and min_x > 0 and max_x > 0):
             map_q1 = np.full((scale_value * int(max_y) + 1, scale_value * int(max_x) + 1), initial_value)
@@ -156,81 +179,3 @@ class TraversabilityListener:
             map_q3 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), initial_value)
             map_q4 = np.full((scale_value * int(max_y - min_y) + 1, scale_value * int(abs(min_x))), initial_value)
         return map_q1, map_q2, map_q3, map_q4
-
-    def extract_color_tuple(self, point):
-        r = int(point[3] * 255)
-        g = int(point[4] * 255)
-        b = int(point[5] * 255)
-        return (r, g, b)
-
-    def convert_colors_to_traversability_value(self, color_tuple):
-        # Define the color mappings with tolerance
-        
-        # Define colors for each class
-        color_map = {
-            (255, 255, 0): 0.1,   # yellow : grass    
-            (255, 128, 0): 0.01,    # Orange : rock 
-            (0, 255, 0): 1.0,   # green : rocky-trail   
-            (0, 0, 255): 0.05,  # blue : roots 
-            (255, 0, 255): 0.05,  # magnenta: rough-trail
-            (0, 255, 255): 0.0001,  # cyan : structure 
-            (150, 75, 0): 0.01,  # brown : tree-trunk
-            (128, 0, 255): 0.001,  # Purple : vegetation 
-            (255, 0, 0): 0.0  # Red: Geometric hazards
-        }
-
-        # Define tolerance for color matching
-        tolerance = 20
-
-        # Check if the color tuple matches any color within the tolerance
-        for key, value in color_map.items():
-            if all(abs(color_tuple[i] - key[i]) <= tolerance for i in range(3)):
-                return value
-
-        # Default value for any unknown color
-        return 3.0
-    
-    # Optimize the quadrants to build the traversability maps for the planner
-    def optimize_quadrants(self, map_q1, map_q2, map_q3, map_q4):
-        # Create a KDTree for the points
-        points_array = np.array(self.points_list)
-        kdtree = KDTree(points_array[:, :2])
-
-        # Process each quadrant
-        def process_quadrant(map_q, x_multiplier, y_multiplier):
-            # Iterate through each element in the map
-            for (x, y), element in np.ndenumerate(map_q):
-                # Get a list of colors from within each block of the 2D array
-                x_value = (x * x_multiplier) / self.scale_value
-                y_value = (y * y_multiplier) / self.scale_value
-                box_min = np.array([x_value, y_value])
-                box_max = np.array([x_value + 1, y_value + 1])
-                indices = kdtree.query_ball_point((box_min + box_max) / 2, np.linalg.norm(box_max - box_min) / 2)
-                relevant_points = points_array[indices]
-                color_list = [self.extract_color_tuple(point) for point in relevant_points]
-                # Find which color shows up the most in each block of the traversability map
-                if color_list:
-                    most_common_color = max(set(color_list), key=color_list.count)
-                    if (0 <= y < map_q.shape[0] and 0 <= x < map_q.shape[1]):
-                        traversability_value = self.convert_colors_to_traversability_value(most_common_color)
-                        if (not (traversability_value == 3)):
-                            map_q[y, x] = traversability_value
-
-        # Start timer to construct traversability map
-        start_time = time.time()
-        try:
-            print("Scaling traversability map for the path planner...")
-            process_quadrant(map_q1, 1, 1)
-            process_quadrant(map_q2, -1, 1)
-            process_quadrant(map_q3, -1, -1)
-            process_quadrant(map_q4, 1, -1)
-            current_time = time.time() - start_time
-            print("It took", current_time, "seconds to scale the traversability map for the planner.")
-        except Exception as e:
-            print("There was a problem:", e)
-            current_time = time.time() - start_time
-            print("Process ran for", current_time, "seconds.")
-
-    # Generate an empty map in the case where a traversability map cannot be constructed
-    def generate_empty_map(self, width, height):
-        return np.random.uniform(low=1, high=1, size=(width,height))
