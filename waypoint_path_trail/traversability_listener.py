@@ -31,8 +31,7 @@ class TraversabilityListener:
 
     # Get the traversability value of a point
     def extract_trav_value(self, point):
-        intensity = point[3]
-        return intensity
+        return point[3]
     
     # Generate an empty map in the case where a traversability map cannot be constructed
     def generate_empty_map(self, width, height):
@@ -45,54 +44,15 @@ class TraversabilityListener:
         map_q3 = travs_result[2]
         map_q4 = travs_result[3]
         return map_q1, map_q2, map_q3, map_q4
-
-    def build_traversability_map(self):
-        scale_value = self.scale_value
-        points_list = self.points_list
-        x_coords = [point[0] for point in points_list]
-        y_coords = [point[1] for point in points_list]
-
-        if len(x_coords) > 0 and len(y_coords) > 0:
-            min_x, max_x = min(x_coords), max(x_coords)
-            min_y, max_y = min(y_coords), max(y_coords)
-            traversability_values = []
-            
-            # Initialize empty maps for each quadrant
-            # These are the traversability maps to be passed to the planner
-            result = self.initialize_empty_quadrants(min_x, max_x, min_y, max_y, scale_value, 0.0)
-            map_q1 = result[0]
-            map_q2 = result[1]
-            map_q3 = result[2]
-            map_q4 = result[3]
-
-            # Plotting
-            for point in points_list:
-                traversability_value = self.extract_trav_value(point)
-                #traversability_value = self.convert_colors_to_traversability_value(color_tuple)
-                traversability_values.append(traversability_value)
-            self.traversability_values = traversability_values
-            self.travs_x = x_coords
-            self.travs_y = y_coords
-            plt.figure(figsize=(10, 8))
-            plt.scatter(x_coords, y_coords, c=traversability_values, cmap='viridis', s=10, alpha=0.8)
-            plt.colorbar(label='Traversability Value')
-            plt.title('Traversability Map')
-            plt.xlabel('X')
-            plt.ylabel('Y')
-            plt.grid(True)
-            plt.show()
-
-            # Build the traversability maps for the planner
-            self.optimize_quadrants(map_q1, map_q2, map_q3, map_q4)
-
-            return map_q1, map_q2, map_q3, map_q4
     
-
     # Optimize the quadrants to build the traversability maps for the planner
     def optimize_quadrants(self, map_q1, map_q2, map_q3, map_q4):
         # Create a KDTree for the points
         points_array = np.array(self.points_list)
         kdtree = KDTree(points_array[:, :2])
+
+        min_trav = min(point[3] for point in self.points_list)
+        max_trav = max(point[3] for point in self.points_list)
 
         # Process each quadrant
         def process_quadrant(map_q, x_multiplier, y_multiplier):
@@ -108,12 +68,11 @@ class TraversabilityListener:
                 indices = kdtree.query_ball_point((box_min + box_max) / 2, np.linalg.norm(box_max - box_min) / 2)
                 relevant_points = points_array[indices]
 
-                traversability_list = [self.extract_trav_value(point) for point in relevant_points]
-                # Find which color shows up the most in each block of the traversability map
-                if traversability_list:
-                    average_traversability = sum(traversability_list) / len(traversability_list)
-                    if (0 <= y < map_q.shape[0] and 0 <= x < map_q.shape[1]):
-                        map_q[y, x] = average_traversability
+                if len(relevant_points) > 0:
+                    traversability_values = [self.extract_trav_value(point) for point in relevant_points]
+                    avg_trav = sum(traversability_values) / len(traversability_values)
+                    normalized_trav = (avg_trav - min_trav) / (max_trav - min_trav)
+                    map_q[y, x] = normalized_trav
 
         # Start timer to construct traversability map
         start_time = time.time()
@@ -130,6 +89,50 @@ class TraversabilityListener:
             current_time = time.time() - start_time
             print("Process ran for", current_time, "seconds.")
 
+    # Build the traversability map
+    def build_traversability_map(self):
+        scale_value = self.scale_value
+        points_list = self.points_list
+        x_coords = [point[0] for point in points_list]
+        y_coords = [point[1] for point in points_list]
+
+        if len(x_coords) > 0 and len(y_coords) > 0:
+            min_x, max_x = min(x_coords), max(x_coords)
+            min_y, max_y = min(y_coords), max(y_coords)
+            traversability_values = []
+            
+            # Initialize empty maps for each quadrant
+            # These are the traversability maps to be passed to the planner
+            result = self.initialize_empty_quadrants(min_x, max_x, min_y, max_y, scale_value, 0.0)
+            map_q1, map_q2, map_q3, map_q4 = result
+
+            # Extract traversability values and create colormap
+            traversability_values = [self.extract_trav_value[point] for point in points_list]
+            min_trav, max_trav = min(traversability_values), max(traversability_values)
+
+            # Normalize traversability values to a range of [0, 1]
+            normalized_values = [(v - min_trav) / (max_trav - min_trav) for v in traversability_values]
+
+            # Create colormap
+            cmap = plt.cm.viradis  
+
+            # Plotting
+            plt.figure(figsize=(10, 8))
+            plt.scatter(x_coords, y_coords, c=traversability_values, cmap='viridis', s=10, alpha=0.8) 
+            plt.colorbar(label='Normalized Traversability Value')
+            plt.title('Traversability Map')
+            plt.xlabel('X')
+            plt.ylabel('Y')
+            plt.grid(True)
+            plt.show()
+
+            # Build the traversability map for the planner
+            self.optimize_quadrants(map_q1, map_q2, map_q3, map_q4)
+
+            return map_q1, map_q2, map_q3, map_q4
+        else:
+            print("No valid points found in the point cloud")
+            return None, None, None, None
     
     #Function to initialize empty quadrant maps
     def initialize_empty_quadrants(self, min_x, max_x, min_y, max_y, scale_value, initial_value):
