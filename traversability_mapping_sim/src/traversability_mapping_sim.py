@@ -16,7 +16,7 @@ class PointCloudStitcher:
         # Subscribe to semantic pointcloud, geometric pointcloud, and odometry
         self.semantic_pointcloud_sub = rospy.Subscriber('/segmented_pointcloud', PointCloud2, self.semantic_pointcloud_callback, queue_size=1)
         self.geometric_pointcloud_sub = rospy.Subscriber('/terrain_map', PointCloud2, self.geometric_pointcloud_callback, queue_size=1)
-        self.odom_sub = rospy.Subscriber('/state_estimation', Odometry, self.odometry_callback, queue_size=1)
+        self.odom_sub = rospy.Subscriber('/state_estimation_at_scan', Odometry, self.odometry_callback, queue_size=1)
         # Publisher for the stitched traversability map
         self.stitched_pointcloud_pub = rospy.Publisher('/trav_map', PointCloud2, queue_size=1)
         
@@ -40,14 +40,9 @@ class PointCloudStitcher:
 
         # Color map for cost calculation 
         self.color_map = {
-            (1.0, 1.0, 0.0): 0.4,    # yellow : grass    
-            (1.0, 0.5, 0.0): 0.5,    # Orange : rock 
-            (0.0, 1.0, 0.0): 0.0,    # green : trail   
-            (0.0, 0.0, 1.0): 0.45,    # blue : roots 
-            (1.0, 0.0, 1.0): 0.75,    # magenta: rough-trail
-            (0.0, 1.0, 1.0): 0.9,    # cyan : structure 
-            (0.59, 0.29, 0.0): 0.8,  # brown : tree-trunk (150/255, 75/255, 0)
-            (0.5, 0.0, 1.0): 0.4,    # Purple : vegetation 
+            (1.0, 1.0, 0.0): 1,    # yellow : grass    
+            (1.0, 0.5, 0.0): 0,    # Orange : trail
+            (0.0, 1.0, 0.0): 1    # green : tree 
         }
         self.color_array = np.array(list(self.color_map.keys()))
 

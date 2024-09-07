@@ -12,8 +12,8 @@ import tf2_ros
 import open3d as o3d
 
 # Camera parameters
-fx, fy = 260.68658447265625, 260.68658447265625  # Focal lengths
-cx, cy = 317.3788757324219, 182.31150817871094  # Principal points
+fx, fy = 205.47, 205.47  # Focal lengths
+cx, cy = 320.5, 180.5  # Principal points
 
 # Model weights
 model_path = "/home/cam/ros_ws/src/traversability_mapping_sim/src/trail.pt"
@@ -35,13 +35,8 @@ class SegmentationPointCloud:
         # Define colors for each class
         self.class_colors = {
             0: (255, 255, 0),    # yellow : grass    
-            1: (255, 128, 0),    # Orange : rock 
-            2: (0, 255, 0),    # green : trail   
-            3: (0, 0, 255),  # blue : roots 
-            4: (255, 0, 255),  # magenta: rough-trail
-            5: (0, 255, 255),  # cyan : structure 
-            6: (150, 75, 0),  # brown : tree-trunk
-            7: (128, 0, 255),  # Purple : vegetation 
+            1: (255, 128, 0),    # Orange : trail
+            2: (0, 255, 0)    # green : tree
         }
 
     def create_colored_pointcloud(self, timestamp):
@@ -76,7 +71,7 @@ class SegmentationPointCloud:
 
         # Transform pointcloud to account for robot movement
         try:
-            transform = self.tf_buffer.lookup_transform('map', 'zed_link', timestamp)
+            transform = self.tf_buffer.lookup_transform('map', 'rgbd_camera', timestamp)
             colored_pointcloud[:, :3] = self.transform_pointcloud(colored_pointcloud[:, :3], transform)
 
             robot_position = self.get_robot_position()
@@ -111,7 +106,7 @@ class SegmentationPointCloud:
         
     def get_robot_position(self):
         try:
-            transform = self.tf_buffer.lookup_transform('map', 'base_link', rospy.Time(0))
+            transform = self.tf_buffer.lookup_transform('map', 'vehicle', rospy.Time(0))
             return np.array([transform.transform.translation.x,
                             transform.transform.translation.y,
                             transform.transform.translation.z])
@@ -148,7 +143,7 @@ class SegmentationPointCloud:
         valid_points = np.column_stack((X[mask], Y[mask], Z[mask]))
         return valid_points, mask
 
-    def voxel_grid_filter(self, pointcloud, voxel_size=0.1):
+    def voxel_grid_filter(self, pointcloud, voxel_size=0.5):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(pointcloud[:, :3])
         pcd.colors = o3d.utility.Vector3dVector(pointcloud[:, 3:6])
@@ -177,30 +172,13 @@ class SegmentationPointCloud:
             [0, 0, 0, 1]
         ])
 
-        # Create a rotation matrix to rotate 90 degrees around the Y-axis
-        rotation_z = np.array([
-            [0, 1, 0, 0],
-            [-1, 0, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
-
-        ])
-        rotation_y = np.array([
-            [0, 0, 1, 0],
-            [0, 1, 0, 0],
-            [-1, 0, 0, 0],
-            [0, 0, 0, 1]
-        ])
-
-        combined_rotation = np.dot(rotation_y, rotation_z)
-        combined_transform = np.dot(T, combined_rotation)
-
         # Add homogeneous coordinate
         points_h = np.hstack((points, np.ones((points.shape[0], 1))))
         
         # Transform points
-        points_transformed = np.dot(combined_transform, points_h.T).T[:, :3]
-        return points_transformed
+        points_transformed = np.dot(T, points_h.T).T
+        
+        return points_transformed[:, :3]
 
 if __name__ == '__main__':
     rospy.init_node('segmentation_pointcloud_node', anonymous=True)
