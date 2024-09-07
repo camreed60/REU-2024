@@ -107,7 +107,7 @@ class TraversabilityListener:
             map_q1, map_q2, map_q3, map_q4 = result
 
             # Extract traversability values and create colormap
-            traversability_values = [self.extract_trav_value[point] for point in points_list]
+            traversability_values = traversability_values = [self.extract_trav_value(point) for point in points_list]
             min_trav, max_trav = min(traversability_values), max(traversability_values)
 
             # Normalize traversability values to a range of [0, 1]
@@ -117,8 +117,8 @@ class TraversabilityListener:
             cmap = plt.cm.viradis  
 
             # Plotting
-            plt.figure(figsize=(10, 8))
-            plt.scatter(x_coords, y_coords, c=traversability_values, cmap='viridis', s=10, alpha=0.8) 
+            scatter = plt.scatter(x_coords, y_coords, c=normalized_values, cmap=cmap, s=10, alpha=0.8)
+            plt.colorbar(scatter, label='Normalized Traversability Value')
             plt.colorbar(label='Normalized Traversability Value')
             plt.title('Traversability Map')
             plt.xlabel('X')
