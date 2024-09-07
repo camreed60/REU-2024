@@ -267,8 +267,8 @@ def semantic_based_data(quad1, quad2, quad3, quad4, way_pub, rate, poseListener,
             finalX = 29
             finalY = 31
         else:
-            finalX = 15.6
-            finalY = 3.8
+            finalX = 14
+            finalY = 4
         advanced_planner = AdvancedRRTStarPathPlanner(vehicleX, vehicleY, finalX, finalY, 100000, quad1, quad2, quad3, quad4, scale)
         # Plan the path
         path = advanced_planner.plan_path()
