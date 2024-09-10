@@ -40,9 +40,9 @@ class PointCloudStitcher:
 
         # Color map for cost calculation 
         self.color_map = {
-            (1.0, 1.0, 0.0): 8,    # yellow : grass    
-            (1.0, 0.5, 0.0): 0,    # Orange : trail
-            (0.0, 1.0, 0.0): 10    # green : tree 
+            (0.0, 0.0, 1.0): .1,    # yellow : grass    
+            (1.0, 1.0, 1.0): 1,    # Orange : trail
+            (0.0, 1.0, 0.0): .01    # green : tree 
         }
         self.color_array = np.array(list(self.color_map.keys()))
 
