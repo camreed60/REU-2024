@@ -16,7 +16,7 @@ fx, fy = 205.47, 205.47  # Focal lengths
 cx, cy = 320.5, 180.5  # Principal points
 
 # Model weights
-model_path = "/home/cam/ros_ws/src/traversability_mapping_sim/src/trail.pt"
+model_path = "CHANGETOYOURPATH/trail.pt" 
 
 class SegmentationPointCloud:
     def __init__(self):
@@ -34,9 +34,9 @@ class SegmentationPointCloud:
 
         # Define colors for each class
         self.class_colors = {
-            0: (255, 255, 0),    # yellow : grass    
-            1: (255, 128, 0),    # Orange : trail
-            2: (0, 255, 0)    # green : tree
+            0: (0, 0, 255),    # red (255, 0, 0) for metrics # yellow : grass   (255. 255. 0) 
+            1: (255, 255, 255),    # white (255, 255, 255) for metrics # Orange : trail  ( 255, 128, 0)
+            2: (0, 255, 0)    # red for metrics# green : tree (0, 255, 0)
         }
 
     def create_colored_pointcloud(self, timestamp):

@@ -272,7 +272,7 @@ class AdvancedRRTStarPathPlanner:
                 time_limit = 10
         
         # The time limit is currently being overwritten to be 2 minutes
-        time_limit = 120
+        time_limit = 90
         start_time = time.time()
         goal_found = False
         while True:
@@ -350,8 +350,8 @@ class AdvancedRRTStarPathPlanner:
                 if near_node == self.get_parent(node):
                     continue
                 traversability_near = self.get_traversability(near_node)
-                if traversability_near == 0:  # Skip nodes that are in impassable areas
-                    continue
+                #if traversability_near < 0.01:  # Skip nodes that are in impassable areas
+                #    continue
                 new_near_cost = self.calculate_cost(near_node, node) # Calculate the new near cost
                 # If the new near cost is less than the current cost of the near node
                 if new_near_cost < self.cost(near_node):
