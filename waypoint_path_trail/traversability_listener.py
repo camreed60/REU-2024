@@ -22,7 +22,7 @@ class TraversabilityListener:
         self.travs_y = None
 
         # Subscribe to the /traversability_map topic
-        rospy.Subscriber("/trav_map_replay", PointCloud2, self.callback_classes)
+        rospy.Subscriber("/trav_map", PointCloud2, self.callback_classes)
     
     # Pointcloud callback
     def callback_classes(self, point_cloud):
