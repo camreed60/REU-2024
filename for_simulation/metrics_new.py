@@ -23,7 +23,6 @@ class MetricCollection:
         self.collection_started = False
         self.collection_ended = False
 
-        # Point cloud related attributes
         self.latest_cloud = None
         self.lock = threading.Lock()
 
@@ -96,7 +95,7 @@ class MetricCollection:
                 return False
 
             trail_ratio = on_trail_points / total_points
-            is_on_trail = trail_ratio > 0.1  # Threshold set to 10%
+            is_on_trail = trail_ratio > 0.5  # Threshold set to 10%
 
             debug_msg = (f"On trail: {is_on_trail}, ratio: {trail_ratio:.2f}, "
                          f"points: {on_trail_points}/{total_points}, "
@@ -182,8 +181,8 @@ def main():
     rospy.init_node('metric_collection')
     
     # Define start and end positions
-    start_position = [-68, 18, 0]  # Replace with your desired start position
-    end_position = [53, 26, 0]  # Replace with your desired end position
+    start_position = [-68, 18, 0] 
+    end_position = [53, 26, 0]  
     
     mc = MetricCollection(start_position, end_position)
     
