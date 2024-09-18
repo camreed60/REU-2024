@@ -26,15 +26,13 @@ class PointCloudStitcher:
         self.latest_geometric_pointcloud = None
         self.latest_odometry = None
         self.previous_pose = None
-        self.global_geometric_cloud = None
-        self.geometric_cloud_lifetime = rospy.Duration(5.0)  # Keep geometric points for 5 seconds
-
+        
         self.voxel_size = 0.25
         self.fitness_threshold = 0.55
         self.timer = rospy.Timer(rospy.Duration(.1), self.timer_callback) # can try .1
-        self.weight = .75
-        self.distance_threshold = .1
-        
+        self.weight_semantic = 1
+        self.weight_geometric = 1
+
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
@@ -88,50 +86,22 @@ class PointCloudStitcher:
             rospy.logwarn(f"Failed to transform geometric pointcloud: {e}")
             return
         
-        # Update global geometric cloud
-        current_time = rospy.Time.now()
-        geometric_np_with_time = np.column_stack((geometric_np, np.full((geometric_np.shape[0], 1), current_time.to_sec())))
-
-        if self.global_geometric_cloud is None:
-            self.global_geometric_cloud = geometric_np_with_time
-        else:
-            # Remove outdated points
-            current_time_sec = current_time.to_sec()
-            mask = current_time_sec - self.global_geometric_cloud[:, -1] <= self.geometric_cloud_lifetime.to_sec()
-            self.global_geometric_cloud = self.global_geometric_cloud[mask]
-
-            # Add new points
-            self.global_geometric_cloud = np.vstack((self.global_geometric_cloud, geometric_np_with_time))
-
-        # Check if global cloud is valid
-        if self.global_geometric_cloud is None or len(self.global_geometric_cloud) == 0:
-            rospy.logwarn("Global geometric cloud is empty or None. Skipping this point cloud.")
-            return
-
         # Build k-d trees for both pointclouds
         semantic_tree = KDTree(semantic_np[:, :3])
-        geometric_tree = KDTree(self.global_geometric_cloud[:, :3])
+        geometric_tree = KDTree(geometric_np[:, :3])
 
         # Find nearest neighbors in both directions
         distances_sem_to_geo, indices_sem_to_geo = geometric_tree.query(semantic_np[:, :3], k=1)
-        distances_geo_to_sem, indices_geo_to_sem = semantic_tree.query(self.global_geometric_cloud[:, :3], k=1)
+        distances_geo_to_sem, indices_geo_to_sem = semantic_tree.query(geometric_np[:, :3], k=1)
 
         # Set a distance threshold for valid correspondences
-        distance_threshold = self.distance_threshold 
+        distance_threshold = 0.15 #10cm 
 
         # Create masks for valid correspondences in both directions
         valid_mask_sem = distances_sem_to_geo[:, 0] < distance_threshold
-        
         # Find mutual nearest neighbors
         mutual_nearest_sem = np.arange(len(semantic_np))[valid_mask_sem]
         mutual_nearest_geo = indices_sem_to_geo[mutual_nearest_sem, 0]
-
-        # Ensure mutual_nearest_geo indices are within bounds
-        valid_geo_indices = mutual_nearest_geo < len(self.global_geometric_cloud)
-        mutual_nearest_sem = mutual_nearest_sem[valid_geo_indices]
-        mutual_nearest_geo = mutual_nearest_geo[valid_geo_indices]
-
-        # Check for mutual correspondence
         mutual_mask = indices_geo_to_sem[mutual_nearest_geo, 0] == mutual_nearest_sem
 
         # Final valid indices
@@ -146,13 +116,12 @@ class PointCloudStitcher:
         # Extract valid points and colors
         valid_semantic_points = semantic_np[valid_sem_indices]
         valid_semantic_colors = semantic_np[valid_sem_indices, 3:6]
-        valid_geometric_intensities = self.global_geometric_cloud[valid_geo_indices, 3]
+        valid_geometric_intensities = geometric_np[valid_geo_indices, 3]
 
         costs = self.calculate_cost(valid_semantic_colors, valid_geometric_intensities)
 
         # Create cost pointcloud (x, y, z, intensity)
         cost_pointcloud = np.column_stack((valid_semantic_points[:, :3], costs))
-
 
         # Convert cost pointcloud to Open3D format
         cost_pcd = self.numpy_to_o3d_pointcloud(cost_pointcloud)
@@ -203,7 +172,7 @@ class PointCloudStitcher:
         
         # Apply rotation and translation
         transformed_points = np.dot(points, rotation_matrix.T) + translation
-
+        
         return transformed_points
     
     def classify_color(self, color):
@@ -220,7 +189,7 @@ class PointCloudStitcher:
         costs = np.zeros(len(colors))
         for i, (color, intensity) in enumerate(zip(colors, intensities)):
             nearest_color, color_cost = self.classify_color(color)
-            costs[i] = (color_cost) * (self.weight) + (intensity) * (1 - self.weight)
+            costs[i] = (color_cost) * (self.weight_semantic) + (intensity) * (self.weight_geometric)
         
         return costs
 
@@ -272,7 +241,7 @@ class PointCloudStitcher:
         return initial_guess
 
     def icp_registration(self, source_pcd, target_pcd, initial_guess=np.eye(4)):
-        threshold = 0.05  # Distance threshold for ICP
+        threshold = 0.1  # Distance threshold for ICP
         if initial_guess is None:
             initial_guess = np.eye(4)
         

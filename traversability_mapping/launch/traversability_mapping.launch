@@ -1,4 +1,5 @@
 <launch>
-  <node name="global_trav_map_node" pkg="traversability_mapping" type="traversability_mapping.py" output="screen">
-  </node>
+  <node name="segment pointcloud" pkg="traversability_mapping" type="segment_pointcloud.py" output="screen" />
+
+  <node name="traversability mapping" pkg="traversability_mapping" type="traversability_mapping.py" output="screen" />
 </launch>

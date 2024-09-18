@@ -1,4 +1,0 @@
-<launch>
-  <node name="stitch_terrain_node" pkg="traversability_mapping" type="stitching_terrain_map.py" output="screen">
-  </node>
-</launch>
