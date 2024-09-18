@@ -13,10 +13,10 @@ class GlobalMapMaintainer:
         rospy.loginfo("Initializing GlobalMapMaintainer...")
 
         # Subscriber
-        self.merged_cloud_sub = rospy.Subscriber('/traversability_map', PointCloud2, self.update_global_map)
+        self.merged_cloud_sub = rospy.Subscriber('/segmented_terrain', PointCloud2, self.update_global_map)
 
         # Publisher
-        self.global_map_pub = rospy.Publisher('/global_trav_map', PointCloud2, queue_size=10)
+        self.global_map_pub = rospy.Publisher('/terrain_classification', PointCloud2, queue_size=10)
 
         rospy.loginfo("GlobalMapMaintainer initialized. Waiting for messages...")
 

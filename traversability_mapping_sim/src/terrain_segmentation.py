@@ -22,7 +22,7 @@ class SegmentationPointCloud:
     def __init__(self):
         self.bridge = CvBridge()
         self.model = YOLO(model_path)
-        self.pointcloud_pub = rospy.Publisher('/segmented_pointcloud', PointCloud2, queue_size=10)
+        self.pointcloud_pub = rospy.Publisher('/segmented_terrain', PointCloud2, queue_size=10)
         depth_sub = Subscriber('/rgbd_camera/depth/image', Image) # /rgbd_camera/depth/image
         rgb_sub = Subscriber('/rgbd_camera/color/image', Image) # /rgbd_camera/color/image
         ts = ApproximateTimeSynchronizer([depth_sub, rgb_sub], 10, 0.01)  # Reduced tolerance

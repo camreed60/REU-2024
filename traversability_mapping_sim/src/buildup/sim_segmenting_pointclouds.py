@@ -17,7 +17,7 @@ fx, fy = 205.47, 205.47  # Focal lengths
 cx, cy = 320.5, 180.5  # Principal points
 
 # Model weights
-model_path = "/home/wvuirl/ros_environment/autonomous_exploration_ws/src/traversability_mapping_sim/src/buildtrail.pt"
+model_path = "/home/wvuirl/ros_environment/autonomous_exploration_ws/src/traversability_mapping_sim/src/trail.pt"
 
 class SegmentationPointCloud:
     def __init__(self):

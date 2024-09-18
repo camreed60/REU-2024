@@ -32,7 +32,7 @@ class PointCloudStitcher:
         self.voxel_size = 0.25
         self.fitness_threshold = 0.55
         self.timer = rospy.Timer(rospy.Duration(.1), self.timer_callback) # can try .1
-        self.weight = 1
+        self.weight = 0
         self.distance_threshold = 0.125
         
         self.tf_buffer = tf2_ros.Buffer()
@@ -40,9 +40,9 @@ class PointCloudStitcher:
 
         # Color map for cost calculation 
         self.color_map = {
-            (0.0, 0.0, 1.0): .1,    # yellow : grass    
+            (0.0, 0.0, 1.0): 0.4,    # yellow : grass    
             (1.0, 1.0, 1.0): 1,    # Orange : trail
-            (0.0, 1.0, 0.0): .01    # green : tree 
+            (0.0, 1.0, 0.0): 0.01    # green : tree 
         }
         self.color_array = np.array(list(self.color_map.keys()))
 

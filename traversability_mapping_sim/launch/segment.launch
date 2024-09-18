@@ -1,4 +1,0 @@
-<launch>
-  <node name="segment_node" pkg="traversability_mapping_sim" type="sim_segmenting_pointclouds.py" output="screen">
-  </node>
-</launch>
